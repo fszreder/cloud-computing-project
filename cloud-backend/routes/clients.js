@@ -20,17 +20,18 @@ router.get("/", async (req, res) => {
 // POST new client
 router.post("/", async (req, res) => {
   try {
-    const { name, email, phone } = req.body;
+    const { firstName, lastName, email, phone } = req.body;
 
-    if (!name || !email) {
+    if (!firstName || !lastName || !email) {
       return res.status(400).json({
-        error: "name and email are required",
+        error: "first name, last name, and email are required",
       });
     }
 
     const client = {
       id: uuidv4(),
-      name,
+      firstName,
+      lastName,
       email,
       phone: phone || null,
       createdAt: new Date().toISOString(),
@@ -71,15 +72,14 @@ router.delete("/:id", async (req, res) => {
 router.put("/:id", async (req, res) => {
   try {
     const { id } = req.params;
-    const { name, email, phone } = req.body;
+    const { firstName, lastName, email, phone } = req.body;
 
-    if (!name || !email) {
+    if (!firstName || !lastName || !email) {
       return res.status(400).json({
-        error: "name and email are required",
+        error: "firstName, lastName and email are required",
       });
     }
 
-    // pobierz istniejącego klienta
     const { resource: existingClient } = await clientsContainer
       .item(id, id)
       .read();
@@ -90,7 +90,8 @@ router.put("/:id", async (req, res) => {
 
     const updatedClient = {
       ...existingClient,
-      name,
+      firstName,
+      lastName,
       email,
       phone: phone ?? null,
       updatedAt: new Date().toISOString(),

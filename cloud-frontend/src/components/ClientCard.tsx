@@ -7,9 +7,16 @@ interface Props {
 
 export default function ClientCard({ client }: Props) {
   return (
-    <div className="bg-white p-4 rounded shadow">
-      <div className="font-semibold">{client.name}</div>
+    <div className="bg-white p-4 rounded shadow space-y-1">
+      <div className="font-semibold">
+        {client.firstName} {client.lastName}
+      </div>
+
       <div className="text-sm text-gray-600">{client.email}</div>
+
+      {client.phone && (
+        <div className="text-sm text-gray-600">Tel: {client.phone}</div>
+      )}
 
       {client.documentUrl ? (
         <a

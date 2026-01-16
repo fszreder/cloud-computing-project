@@ -7,7 +7,8 @@ interface Props {
 }
 
 export default function AddClientForm({ onClientAdded }: Props) {
-  const [name, setName] = useState('');
+  const [firstName, setFirstName] = useState('');
+  const [lastName, setLastName] = useState('');
   const [email, setEmail] = useState('');
   const [phone, setPhone] = useState('');
   const [loading, setLoading] = useState(false);
@@ -17,15 +18,16 @@ export default function AddClientForm({ onClientAdded }: Props) {
     e.preventDefault();
     setError(null);
 
-    if (!name || !email) {
-      setError('Imię i email są wymagane');
+    if (!firstName || !lastName || !email) {
+      setError('Imię, nazwisko i email są wymagane');
       return;
     }
 
     try {
       setLoading(true);
       const newClient = await addClient({
-        name,
+        firstName,
+        lastName,
         email,
         phone: phone || null,
       });
@@ -33,7 +35,8 @@ export default function AddClientForm({ onClientAdded }: Props) {
       onClientAdded(newClient);
 
       // reset form
-      setName('');
+      setFirstName('');
+      setLastName('');
       setEmail('');
       setPhone('');
     } catch {
@@ -55,8 +58,15 @@ export default function AddClientForm({ onClientAdded }: Props) {
       <input
         className="w-full border p-2 rounded"
         placeholder="Imię"
-        value={name}
-        onChange={(e) => setName(e.target.value)}
+        value={firstName}
+        onChange={(e) => setFirstName(e.target.value)}
+      />
+
+      <input
+        className="w-full border p-2 rounded"
+        placeholder="Nazwisko"
+        value={lastName}
+        onChange={(e) => setLastName(e.target.value)}
       />
 
       <input

@@ -12,16 +12,19 @@ export const getClients = async (): Promise<Client[]> => {
 };
 
 export const addClient = async (
-  data: Pick<Client, 'name' | 'email' | 'phone'>
+  data: Pick<Client, 'firstName' | 'lastName' | 'email' | 'phone'>
 ): Promise<Client> => {
   const res = await fetch(`${API}/clients`, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: {
+      'Content-Type': 'application/json',
+    },
     body: JSON.stringify(data),
   });
 
   if (!res.ok) {
-    throw new Error('Failed to add client');
+    const errorText = await res.text();
+    throw new Error(errorText || 'Failed to add client');
   }
 
   return res.json();
@@ -40,7 +43,8 @@ export const uploadPdf = async (
   });
 
   if (!res.ok) {
-    throw new Error('Failed to upload PDF');
+    const errorText = await res.text();
+    throw new Error(errorText || 'Failed to upload PDF');
   }
 
   return res.json();
