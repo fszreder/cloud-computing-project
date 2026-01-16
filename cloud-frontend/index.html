@@ -1,55 +1,13 @@
-<!DOCTYPE html>
-<html lang="pl">
+<!doctype html>
+<html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <title>Klienci</title>
-    <style>
-      body {
-        font-family: Arial;
-        padding: 40px;
-      }
-      .client {
-        margin-bottom: 20px;
-      }
-      a {
-        color: blue;
-      }
-    </style>
+    <link rel="icon" type="image/svg+xml" href="/vite.svg" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>cloud-frontend</title>
   </head>
   <body>
-    <h1>Lista klientów</h1>
-    <div id="clients">Ładowanie...</div>
-
-    <script>
-      fetch(
-        "https://cloud-backend-fs-enfyewhphxfjaad8.francecentral-01.azurewebsites.net/clients"
-      )
-        .then((res) => res.json())
-        .then((data) => {
-          const container = document.getElementById("clients");
-          container.innerHTML = "";
-
-          data.forEach((c) => {
-            const div = document.createElement("div");
-            div.className = "client";
-
-            div.innerHTML = `
-            <strong>${c.name}</strong><br/>
-            ${c.email}<br/>
-            ${
-              c.documentUrl
-                ? `<a href="${c.documentUrl}" target="_blank">Pobierz PDF</a>`
-                : "Brak dokumentu"
-            }
-          `;
-
-            container.appendChild(div);
-          });
-        })
-        .catch(() => {
-          document.getElementById("clients").innerText =
-            "Błąd pobierania danych";
-        });
-    </script>
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>
