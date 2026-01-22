@@ -11,7 +11,7 @@ app.use(express.json());
 
 app.use("/clients", clientsRoutes);
 app.use("/orders", ordersRoutes);
-app.use("/upload", require("./routes/uploads"));
+app.use("/clients", require("./routes/uploads"));
 
 app.get("/", (req, res) => {
   res.send("Cloud backend działa");

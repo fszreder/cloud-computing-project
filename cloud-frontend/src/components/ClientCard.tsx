@@ -3,9 +3,11 @@ import UploadPdf from './UploadPdf';
 
 interface Props {
   client: Client;
+  onDelete: (id: string) => void;
+  onClientUpdated: (client: Client) => void;
 }
 
-export default function ClientCard({ client }: Props) {
+export default function ClientCard({ client, onDelete }: Props) {
   return (
     <div className="bg-white p-4 rounded shadow space-y-1">
       <div className="font-semibold">
@@ -31,7 +33,28 @@ export default function ClientCard({ client }: Props) {
         <div className="text-gray-400 text-sm mt-2">Brak dokumentu</div>
       )}
 
-      <UploadPdf clientId={client.id} />
+      <UploadPdf
+        clientId={client.id}
+        // eslint-disable-next-line @typescript-eslint/no-unused-vars
+        onClientUpdated={function (_client: Client): void {
+          throw new Error('Function not implemented.');
+        }}
+      />
+      <button
+        onClick={() => onDelete(client.id)}
+        className="
+    bg-red-600
+    text-white
+    px-3
+    py-1
+    rounded
+    hover:bg-red-700
+    cursor-pointer
+    transition-colors
+  "
+      >
+        Usuń
+      </button>
     </div>
   );
 }

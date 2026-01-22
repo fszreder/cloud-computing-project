@@ -6,7 +6,7 @@ const { clientsContainer } = require("../cosmosClient");
 
 const upload = multer({ storage: multer.memoryStorage() });
 
-router.post("/:clientId", upload.single("file"), async (req, res) => {
+router.post("/:clientId/upload", upload.single("file"), async (req, res) => {
   try {
     const { clientId } = req.params;
     const file = req.file;
@@ -16,7 +16,7 @@ router.post("/:clientId", upload.single("file"), async (req, res) => {
     }
 
     const blobServiceClient = BlobServiceClient.fromConnectionString(
-      process.env.AZURE_STORAGE_CONNECTION_STRING
+      process.env.AZURE_STORAGE_CONNECTION_STRING,
     );
 
     const containerClient =
@@ -42,15 +42,11 @@ router.post("/:clientId", upload.single("file"), async (req, res) => {
       documentUrl: fileUrl,
       updatedAt: new Date().toISOString(),
     };
+    const { resource: savedClient } = await clientsContainer
+      .item(clientId, clientId)
+      .replace(updatedClient);
 
-    const { resource: savedClient } = await clientsContainer.items.upsert(
-      updatedClient
-    );
-
-    res.json({
-      message: "File uploaded and linked to client",
-      client: savedClient,
-    });
+    res.json(savedClient);
   } catch (err) {
     console.error("Upload error:", err.message);
     res.status(500).json({ error: "Upload failed" });

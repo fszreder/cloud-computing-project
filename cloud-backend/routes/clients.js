@@ -97,7 +97,9 @@ router.put("/:id", async (req, res) => {
       updatedAt: new Date().toISOString(),
     };
 
-    const { resource } = await clientsContainer.items.upsert(updatedClient);
+    const { resource } = await clientsContainer
+      .item(id, id)
+      .replace(updatedClient);
 
     res.status(200).json(resource);
   } catch (err) {

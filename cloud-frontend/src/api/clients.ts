@@ -30,6 +30,12 @@ export const addClient = async (
   return res.json();
 };
 
+export async function deleteClientApi(id: string) {
+  await fetch(`${API}/clients/${id}`, {
+    method: 'DELETE',
+  });
+}
+
 export const uploadPdf = async (
   clientId: string,
   file: File
