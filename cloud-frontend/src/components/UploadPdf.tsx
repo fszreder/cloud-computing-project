@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { uploadPdf } from '../api/clients';
+import { uploadClientDocument } from '../api/clients';
 import type { Client } from '../types/Client';
 
 interface Props {
@@ -19,7 +19,7 @@ export default function UploadPdf({ clientId, onClientUpdated }: Props) {
     setLoading(true);
 
     try {
-      const updatedClient = await uploadPdf(clientId, file);
+      const updatedClient = await uploadClientDocument(clientId, file);
       onClientUpdated(updatedClient); // ← KLUCZ
     } catch (err) {
       console.error(err);

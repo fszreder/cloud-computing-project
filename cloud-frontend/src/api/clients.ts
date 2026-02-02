@@ -36,21 +36,64 @@ export async function deleteClientApi(id: string) {
   });
 }
 
-export const uploadPdf = async (
+export const uploadClientDocument = async (
   clientId: string,
   file: File
 ): Promise<Client> => {
   const formData = new FormData();
   formData.append('file', file);
 
-  const res = await fetch(`${API}/clients/${clientId}/upload`, {
+  const res = await fetch(`${API}/clients/${clientId}/documents`, {
+    method: 'POST',
+    body: formData,
+  });
+
+  if (!res.ok) throw new Error(await res.text());
+  return res.json();
+};
+
+export const deleteClientDocument = async (
+  clientId: string,
+  docId: string
+): Promise<Client> => {
+  const res = await fetch(`${API}/clients/${clientId}/documents/${docId}`, {
+    method: 'DELETE',
+  });
+
+  if (!res.ok) throw new Error(await res.text());
+  return res.json();
+};
+
+export const updateClient = async (
+  id: string,
+  data: Pick<Client, 'firstName' | 'lastName' | 'email' | 'phone'>
+): Promise<Client> => {
+  const res = await fetch(`${API}/clients/${id}`, {
+    method: 'PUT',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify(data),
+  });
+
+  if (!res.ok) throw new Error(await res.text());
+  return res.json();
+};
+
+export const uploadClientAvatar = async (
+  clientId: string,
+  file: File
+): Promise<Client> => {
+  const formData = new FormData();
+  formData.append('file', file);
+
+  const res = await fetch(`${API}/clients/${clientId}/avatar`, {
     method: 'POST',
     body: formData,
   });
 
   if (!res.ok) {
-    const errorText = await res.text();
-    throw new Error(errorText || 'Failed to upload PDF');
+    throw new Error(await res.text());
   }
 
   return res.json();

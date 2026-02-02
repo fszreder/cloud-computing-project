@@ -1,12 +1,18 @@
-import type { ReactNode } from 'react';
-
 export interface Client {
-  lastName: ReactNode;
-  firstName: ReactNode;
   id: string;
-  name: string;
+
+  firstName: string;
+  lastName: string;
   email: string;
-  phone?: string | null;
-  documentUrl?: string | null;
+  phone: string | null;
+  avatarUrl?: string;
+
+  documents?: {
+    id: string;
+    name: string;
+    url: string;
+    uploadedAt: string;
+  }[];
+
   createdAt?: string;
 }
