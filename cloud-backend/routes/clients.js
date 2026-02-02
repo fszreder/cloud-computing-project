@@ -256,6 +256,7 @@ router.post("/:id/avatar", upload.single("file"), async (req, res) => {
     const updatedClient = {
       ...client,
       avatarUrl,
+      avatarThumbnailUrl: null,
       avatarUpdatedAt: new Date().toISOString(),
     };
 

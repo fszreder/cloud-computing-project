@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import type { Client } from '../types/Client';
 import UploadPdf from './UploadPdf';
 import ClientDocuments from './ClientDocuments';
@@ -19,17 +19,29 @@ export default function ClientCard({
 }: Props) {
   const [avatarLoading, setAvatarLoading] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+
+  useEffect(() => {
+    return () => {
+      if (previewUrl) URL.revokeObjectURL(previewUrl);
+    };
+  }, [previewUrl]);
 
   const handleAvatarUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
 
+    const localPreview = URL.createObjectURL(file);
+    setPreviewUrl(localPreview);
+
     setAvatarLoading(true);
     try {
       const updatedClient = await uploadClientAvatar(client.id, file);
       onClientUpdated(updatedClient);
+      setPreviewUrl(null);
     } catch (err) {
       console.error(err);
+      setPreviewUrl(null);
       alert('Błąd uploadu zdjęcia');
     } finally {
       setAvatarLoading(false);
@@ -54,9 +66,17 @@ export default function ClientCard({
   };
 
   return (
-    <div className="bg-white p-4 rounded shadow">
+    <div className="bg-white p-4 rounded shadow border border-gray-100">
+      {/* Kluczowa sekcja: 
+        Usunęliśmy flex-1, więc elementy zajmują tylko tyle miejsca, ile potrzebują.
+      */}
       <div className="flex items-start gap-4">
-        <div className="">
+        {/* Avatar jako pierwszy po lewej - opcjonalnie zamień kolejność divów, jeśli wolisz go po prawej */}
+        <UploadAvatar client={client} previewUrl={previewUrl} />
+
+        <div className="min-w-0">
+          {' '}
+          {/* min-w-0 zapobiega rozjeżdżaniu się długich tekstów */}
           {isEditing ? (
             <EditClientForm
               client={client}
@@ -65,24 +85,27 @@ export default function ClientCard({
             />
           ) : (
             <div className="space-y-1">
-              <div className="font-semibold text-lg">
+              <div className="font-bold text-xl text-gray-900 leading-tight">
                 {client.firstName} {client.lastName}
               </div>
-              <div className="text-sm text-gray-600">{client.email}</div>
+              <div className="text-sm text-gray-500 font-medium">
+                {client.email}
+              </div>
 
               {client.phone && (
-                <div className="text-sm text-gray-600">Tel: {client.phone}</div>
+                <div className="text-xs text-gray-400">Tel: {client.phone}</div>
               )}
             </div>
           )}
         </div>
-
-        <UploadAvatar client={client} />
       </div>
 
       {!isEditing && (
         <>
-          <div className="mt-4 space-y-2">
+          <div className="mt-6 border-t border-gray-50 pt-4 space-y-3">
+            <h4 className="text-xs font-bold text-gray-400 uppercase tracking-wider">
+              Dokumenty klienta
+            </h4>
             <ClientDocuments
               documents={client.documents}
               onDelete={handleDeleteDocument}
@@ -91,14 +114,14 @@ export default function ClientCard({
             <UploadPdf clientId={client.id} onClientUpdated={onClientUpdated} />
           </div>
 
-          <div className="flex gap-2 pt-4">
+          <div className="flex gap-2 mt-6 pt-4 border-t border-gray-50">
             <label
               className={`
-              px-3 py-1 rounded cursor-pointer text-white
-              ${avatarLoading ? 'bg-blue-400' : 'bg-blue-600 hover:bg-blue-700'}
-            `}
+                px-4 py-2 text-sm font-medium rounded-md cursor-pointer text-white transition-all
+                ${avatarLoading ? 'bg-blue-300' : 'bg-blue-600 hover:bg-blue-700 shadow-sm'}
+              `}
             >
-              Zmień zdjęcie
+              {avatarLoading ? 'Wgrywanie...' : 'Zmień avatar'}
               <input
                 type="file"
                 accept="image/*"
@@ -110,16 +133,16 @@ export default function ClientCard({
 
             <button
               onClick={() => setIsEditing(true)}
-              className="bg-yellow-500 text-white px-3 py-1 rounded cursor-pointer hover:bg-yellow-600"
+              className="bg-gray-100 text-gray-700 px-4 py-2 text-sm font-medium rounded-md hover:bg-gray-200 transition-all border border-gray-200"
             >
-              Edytuj
+              Edytuj dane
             </button>
 
             <button
               onClick={() => onDelete(client.id)}
-              className="bg-red-600 text-white px-3 py-1 rounded cursor-pointer hover:bg-red-700"
+              className="bg-white text-red-600 border border-red-200 px-4 py-2 text-sm font-medium rounded-md hover:bg-red-50 transition-all ml-auto"
             >
-              Usuń
+              Usuń klienta
             </button>
           </div>
         </>
