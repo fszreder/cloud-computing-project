@@ -5,6 +5,7 @@ const { v4: uuidv4 } = require("uuid");
 const crypto = require("crypto");
 const multer = require("multer");
 const { BlobServiceClient } = require("@azure/storage-blob");
+const { QueueClient } = require("@azure/storage-queue");
 
 const upload = multer({ storage: multer.memoryStorage() });
 // GET all clients
@@ -227,7 +228,6 @@ router.post("/:id/avatar", upload.single("file"), async (req, res) => {
       return res.status(404).json({ error: "Client not found" });
     }
 
-    // 🔥 usuń stare zdjęcie, jeśli istnieje
     if (client.avatarUrl) {
       try {
         const oldBlobPath = new URL(client.avatarUrl).pathname.replace(
@@ -262,11 +262,25 @@ router.post("/:id/avatar", upload.single("file"), async (req, res) => {
     const { resource: savedClient } = await clientsContainer
       .item(id, id)
       .replace(updatedClient);
+    // ==== QUEUE MESSAGE ====
 
-    // ⏭️ TU W PRZYSZŁOŚCI:
-    // - wrzucisz message do Azure Queue
-    // - z payloadem { clientId, avatarUrl }
+    const queueClient = new QueueClient(
+      process.env.AZURE_STORAGE_CONNECTION_STRING,
+      "avatar-thumbnail-queue",
+    );
 
+    const messageData = {
+      clientId: id,
+      blobPath: blobName,
+      avatarUrl: avatarUrl,
+    };
+
+    const messageString = JSON.stringify(messageData);
+    const base64Message = Buffer.from(messageString).toString("base64");
+
+    await queueClient.sendMessage(base64Message);
+
+    console.log("Wiadomość wysłana do kolejki!");
     return res.json(savedClient);
   } catch (err) {
     console.error("Avatar upload error:", err.message);

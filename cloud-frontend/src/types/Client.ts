@@ -6,6 +6,7 @@ export interface Client {
   email: string;
   phone: string | null;
   avatarUrl?: string;
+  avatarThumbnailUrl?: string | null;
 
   documents?: {
     id: string;

@@ -55,9 +55,7 @@ export default function ClientCard({
 
   return (
     <div className="bg-white p-4 rounded shadow">
-      {/* GÓRA: DANE + AVATAR */}
       <div className="flex items-start gap-4">
-        {/* DANE / FORMULARZ */}
         <div className="">
           {isEditing ? (
             <EditClientForm
@@ -79,14 +77,11 @@ export default function ClientCard({
           )}
         </div>
 
-        {/* AVATAR – ZAWSZE WIDOCZNY */}
         <UploadAvatar client={client} />
       </div>
 
-      {/* RESZTA TYLKO GDY NIE EDYTUJEMY */}
       {!isEditing && (
         <>
-          {/* DOKUMENTY */}
           <div className="mt-4 space-y-2">
             <ClientDocuments
               documents={client.documents}
@@ -96,7 +91,6 @@ export default function ClientCard({
             <UploadPdf clientId={client.id} onClientUpdated={onClientUpdated} />
           </div>
 
-          {/* AKCJE */}
           <div className="flex gap-2 pt-4">
             <label
               className={`
