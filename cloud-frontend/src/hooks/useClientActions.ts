@@ -17,6 +17,12 @@ export const useClientActions = (
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   const [pdfLoading, setPdfLoading] = useState(false);
+  const [previewDocUrl, setPreviewDocUrl] = useState<string | null>(null);
+
+  const [docToDelete, setDocToDelete] = useState<{
+    id: string;
+    name: string;
+  } | null>(null);
 
   useEffect(() => {
     return () => {
@@ -48,19 +54,6 @@ export const useClientActions = (
     });
   };
 
-  const handleDeleteDocument = async (docId: string) => {
-    if (!confirm('Czy na pewno chcesz usunąć ten dokument?')) return;
-
-    toast.promise(deleteClientDocument(client.id, docId), {
-      loading: 'Usuwanie z chmury...',
-      success: (updated) => {
-        onClientUpdated(updated);
-        return 'Dokument usunięty.';
-      },
-      error: 'Błąd usuwania.',
-    });
-  };
-
   const handleClientSave = (updated: Client) => {
     onClientUpdated(updated);
     setIsEditing(false);
@@ -89,6 +82,24 @@ export const useClientActions = (
     });
   };
 
+  const openDeleteDocModal = (docId: string, docName: string) => {
+    setDocToDelete({ id: docId, name: docName });
+  };
+
+  const confirmDeleteDocument = async () => {
+    if (!docToDelete) return;
+
+    toast.promise(deleteClientDocument(client.id, docToDelete.id), {
+      loading: 'Usuwanie dokumentu z chmury...',
+      success: (updated) => {
+        onClientUpdated(updated);
+        setDocToDelete(null);
+        return `Dokument "${docToDelete.name}" usunięty.`;
+      },
+      error: 'Nie udało się usunąć dokumentu.',
+    });
+  };
+
   return {
     state: {
       avatarLoading,
@@ -96,15 +107,20 @@ export const useClientActions = (
       previewUrl,
       isDeleteModalOpen,
       pdfLoading,
+      previewDocUrl,
+      docToDelete,
     },
     actions: {
       setIsEditing,
       setIsDeleteModalOpen,
       handleAvatarUpload,
-      handleDeleteDocument,
       handleClientSave,
       confirmDelete,
       handlePdfUpload,
+      setPreviewDocUrl,
+      openDeleteDocModal,
+      confirmDeleteDocument,
+      closeDeleteDocModal: () => setDocToDelete(null),
     },
   };
 };

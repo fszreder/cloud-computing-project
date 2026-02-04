@@ -9,9 +9,9 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 
-app.use("/clients", clientsRoutes);
-app.use("/orders", ordersRoutes);
-app.use("/clients", require("./routes/uploads"));
+app.use("/api/clients", clientsRoutes);
+app.use("/api/orders", ordersRoutes);
+app.use("/api/api/clients", require("./routes/uploads"));
 
 app.get("/", (req, res) => {
   res.send("Cloud backend działa");

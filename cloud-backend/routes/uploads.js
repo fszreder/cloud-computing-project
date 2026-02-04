@@ -14,18 +14,22 @@ router.post("/:clientId/upload", upload.single("file"), async (req, res) => {
     if (!file) {
       return res.status(400).json({ error: "No file uploaded" });
     }
-
     const blobServiceClient = BlobServiceClient.fromConnectionString(
       process.env.AZURE_STORAGE_CONNECTION_STRING,
     );
-
     const containerClient =
       blobServiceClient.getContainerClient("client-files");
 
     const blobName = `${clientId}-${Date.now()}-${file.originalname}`;
     const blockBlobClient = containerClient.getBlockBlobClient(blobName);
-
+    const isPdf = file.originalname.toLowerCase().endsWith(".pdf");
+    const contentType = isPdf ? "application/pdf" : file.mimetype;
     await blockBlobClient.uploadData(file.buffer);
+    await blockBlobClient.setHTTPHeaders({
+      blobContentType:
+        file.mimetype === "application/pdf" ? "application/pdf" : file.mimetype,
+      blobContentDisposition: `inline; filename="${encodeURIComponent(file.originalname)}"`,
+    });
 
     const fileUrl = blockBlobClient.url;
 
@@ -37,11 +41,20 @@ router.post("/:clientId/upload", upload.single("file"), async (req, res) => {
       return res.status(404).json({ error: "Client not found" });
     }
 
+    const newDocument = {
+      id: Date.now().toString(),
+      name: file.originalname,
+      url: fileUrl,
+      blobName: blobName,
+      uploadedAt: new Date().toISOString(),
+    };
+
     const updatedClient = {
       ...client,
-      documentUrl: fileUrl,
+      documents: [...(client.documents || []), newDocument],
       updatedAt: new Date().toISOString(),
     };
+
     const { resource: savedClient } = await clientsContainer
       .item(clientId, clientId)
       .replace(updatedClient);
@@ -49,7 +62,7 @@ router.post("/:clientId/upload", upload.single("file"), async (req, res) => {
     res.json(savedClient);
   } catch (err) {
     console.error("Upload error:", err.message);
-    res.status(500).json({ error: "Upload failed" });
+    res.status(500).json({ error: "Upload failed: " + err.message });
   }
 });
 

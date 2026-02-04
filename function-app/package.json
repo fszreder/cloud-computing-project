@@ -1,14 +1,16 @@
 {
   "name": "function-app",
   "version": "1.0.0",
-  "description": "Azure Function App for avatar thumbnail processing",
-  "main": "src/functions/*.js",
+  "main": "src/functions/avatarThumbnail.js",
   "scripts": {
-    "start": "func start"
+    "start": "func start",
+    "test": "echo \"No tests yet...\""
   },
   "dependencies": {
-    "@azure/functions": "^4.0.0",
+    "@azure-rest/ai-vision-image-analysis": "^1.0.0-beta.3",
+    "@azure/core-auth": "^1.10.1",
     "@azure/cosmos": "^3.17.3",
+    "@azure/functions": "^4.0.0",
     "@azure/storage-blob": "^12.30.0",
     "sharp": "^0.33.5"
   }

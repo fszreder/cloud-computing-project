@@ -1,7 +1,6 @@
-import type { Client } from '../types/Client';
+import { type Client } from '../types/Client';
 
-const API =
-  'https://cloud-backend-fs-enfyewhphxfjaad8.francecentral-01.azurewebsites.net';
+const API = '/api';
 
 export const getClients = async (): Promise<Client[]> => {
   const res = await fetch(`${API}/clients`);

@@ -26,7 +26,12 @@ export default function AddClientForm({ onClientAdded }: Props) {
   const handleCustomSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    if (!fields.firstName || !fields.lastName || !fields.email) {
+    // Sprawdzamy czy pola w hooku faktycznie mają wartości
+    if (
+      !fields.firstName.trim() ||
+      !fields.lastName.trim() ||
+      !fields.email.trim()
+    ) {
       toast.error('Imię, nazwisko i email są wymagane!');
       return;
     }
@@ -43,7 +48,7 @@ export default function AddClientForm({ onClientAdded }: Props) {
         avatar || undefined
       ),
       {
-        loading: 'Wysyłanie danych i przetwarzanie zdjęcia...',
+        loading: 'Dodawanie klienta do bazy Azure...',
         success: (newClient) => {
           onClientAdded(newClient);
           reset();
@@ -67,16 +72,21 @@ export default function AddClientForm({ onClientAdded }: Props) {
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
         <input
-          className="w-full border p-2 rounded focus:ring-2 focus:ring-blue-500 outline-none"
+          className="w-full border p-2 rounded focus:ring-2 focus:ring-blue-500 outline-none transition-all"
           placeholder="Imię"
           value={fields.firstName}
           onChange={(e) => setters.setFirstName(e.target.value)}
         />
-        <input className="w-full border p-2 rounded focus:ring-2 focus:ring-blue-500 outline-none" />
+        <input
+          className="w-full border p-2 rounded focus:ring-2 focus:ring-blue-500 outline-none transition-all"
+          placeholder="Nazwisko"
+          value={fields.lastName}
+          onChange={(e) => setters.setLastName(e.target.value)}
+        />
       </div>
 
       <input
-        className="w-full border p-2 rounded focus:ring-2 focus:ring-blue-500 outline-none"
+        className="w-full border p-2 rounded focus:ring-2 focus:ring-blue-500 outline-none transition-all"
         placeholder="Email"
         type="email"
         value={fields.email}

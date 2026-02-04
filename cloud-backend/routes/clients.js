@@ -8,13 +8,13 @@ const { BlobServiceClient } = require("@azure/storage-blob");
 const { QueueClient } = require("@azure/storage-queue");
 
 const upload = multer({ storage: multer.memoryStorage() });
-// GET all clients
+
+// 1. GET ALL CLIENTS
 router.get("/", async (req, res) => {
   try {
     const { resources } = await clientsContainer.items
       .query("SELECT * FROM c")
       .fetchAll();
-
     res.json(resources);
   } catch (err) {
     console.error("GET /clients error:", err.message);
@@ -22,7 +22,33 @@ router.get("/", async (req, res) => {
   }
 });
 
-// POST new client
+// 1b. GET SINGLE CLIENT
+router.get("/:id", async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    const querySpec = {
+      query: "SELECT * FROM c WHERE c.id = @id",
+      parameters: [{ name: "@id", value: id }],
+    };
+
+    const { resources } = await clientsContainer.items
+      .query(querySpec)
+      .fetchAll();
+
+    if (resources.length === 0) {
+      console.warn(`[API] Klient o id ${id} nie istnieje w bazie.`);
+      return res.status(404).json({ error: "Client not found" });
+    }
+
+    res.json(resources[0]);
+  } catch (err) {
+    console.error("GET /clients/:id error:", err.message);
+    res.status(500).json({ error: "Błąd serwera przy pobieraniu klienta" });
+  }
+});
+
+// 2. POST NEW CLIENT
 router.post("/", upload.single("avatar"), async (req, res) => {
   try {
     const { firstName, lastName, email, phone, isVip } = req.body;
@@ -42,15 +68,21 @@ router.post("/", upload.single("avatar"), async (req, res) => {
       );
       const containerClient =
         blobServiceClient.getContainerClient("client-avatars");
+      await containerClient.createIfNotExists({ access: "blob" });
 
       const avatarId = crypto.randomUUID();
       const extension = file.originalname.split(".").pop();
       blobName = `${clientId}/${avatarId}.${extension}`;
 
       const blockBlobClient = containerClient.getBlockBlobClient(blobName);
-      await blockBlobClient.uploadData(file.buffer, {
-        blobHTTPHeaders: { blobContentType: file.mimetype },
+
+      await blockBlobClient.uploadData(file.buffer);
+
+      await blockBlobClient.setHTTPHeaders({
+        blobContentType: file.mimetype,
+        blobContentDisposition: `inline; filename="${encodeURIComponent(file.originalname)}"`,
       });
+
       avatarUrl = blockBlobClient.url;
     }
 
@@ -60,7 +92,7 @@ router.post("/", upload.single("avatar"), async (req, res) => {
       lastName,
       email,
       phone: phone || null,
-      isVip: !!isVip,
+      isVip: isVip === "true" || isVip === true,
       avatarUrl,
       avatarThumbnailUrl: null,
       documents: [],
@@ -88,48 +120,17 @@ router.post("/", upload.single("avatar"), async (req, res) => {
   }
 });
 
-// DELETE client by id
-router.delete("/:id", async (req, res) => {
-  try {
-    const { id } = req.params;
-
-    if (!id) {
-      return res.status(400).json({ error: "id is required" });
-    }
-
-    await clientsContainer.item(id, id).delete();
-
-    res.status(204).send();
-  } catch (err) {
-    console.error("DELETE /clients/:id error:", err.message);
-
-    if (err.code === 404) {
-      return res.status(404).json({ error: "Client not found" });
-    }
-
-    res.status(500).json({ error: "Failed to delete client" });
-  }
-});
-
-// PUT update client by id
+// 3. PUT UPDATE CLIENT
 router.put("/:id", async (req, res) => {
   try {
     const { id } = req.params;
     const { firstName, lastName, email, phone, isVip } = req.body;
 
-    if (!firstName || !lastName || !email) {
-      return res.status(400).json({
-        error: "firstName, lastName and email are required",
-      });
-    }
-
     const { resource: existingClient } = await clientsContainer
       .item(id, id)
       .read();
-
-    if (!existingClient) {
+    if (!existingClient)
       return res.status(404).json({ error: "Client not found" });
-    }
 
     const updatedClient = {
       ...existingClient,
@@ -137,147 +138,129 @@ router.put("/:id", async (req, res) => {
       lastName,
       email,
       phone: phone ?? null,
-      updatedAt: new Date().toISOString(),
       isVip: !!isVip,
+      updatedAt: new Date().toISOString(),
     };
 
     const { resource } = await clientsContainer
       .item(id, id)
       .replace(updatedClient);
-
-    res.status(200).json(resource);
+    res.json(resource);
   } catch (err) {
-    console.error("PUT /clients/:id error:", err.message);
-    res.status(500).json({ error: "Failed to update client" });
+    res.status(500).json({ error: "Update failed" });
   }
 });
 
+// 4. DELETE ENTIRE CLIENT
+router.delete("/:id", async (req, res) => {
+  try {
+    const { id } = req.params;
+    await clientsContainer.item(id, id).delete();
+    res.status(204).send();
+  } catch (err) {
+    console.error("Delete client error:", err.message);
+    res.status(500).json({ error: "Failed to delete client" });
+  }
+});
+
+// 5. POST UPLOAD DOCUMENT
 router.post("/:id/documents", upload.single("file"), async (req, res) => {
   try {
     const { id } = req.params;
     const file = req.file;
-
-    if (!file) {
-      return res.status(400).json({ error: "No file uploaded" });
-    }
+    if (!file) return res.status(400).json({ error: "No file uploaded" });
 
     const blobServiceClient = BlobServiceClient.fromConnectionString(
       process.env.AZURE_STORAGE_CONNECTION_STRING,
     );
-
     const containerClient =
       blobServiceClient.getContainerClient("client-files");
 
     const docId = crypto.randomUUID();
-    const blobName = `${id}/${docId}-${file.originalname}`;
-
+    const blobName = `${id}-${Date.now()}-${file.originalname}`;
     const blockBlobClient = containerClient.getBlockBlobClient(blobName);
-    await blockBlobClient.uploadData(file.buffer);
 
-    const fileUrl = blockBlobClient.url;
+    await blockBlobClient.uploadData(file.buffer);
+    await blockBlobClient.setHTTPHeaders({
+      blobContentType:
+        file.mimetype === "application/pdf" ? "application/pdf" : file.mimetype,
+      blobContentDisposition: "inline",
+    });
 
     const { resource: client } = await clientsContainer.item(id, id).read();
-
-    if (!client) {
-      return res.status(404).json({ error: "Client not found" });
-    }
+    if (!client) return res.status(404).json({ error: "Client not found" });
 
     const newDocument = {
       id: docId,
       name: file.originalname,
-      url: fileUrl,
+      url: blockBlobClient.url,
+      blobName: blobName,
       uploadedAt: new Date().toISOString(),
     };
 
     client.documents = [...(client.documents || []), newDocument];
-
     const { resource: savedClient } = await clientsContainer
       .item(id, id)
       .replace(client);
-
-    return res.json(savedClient);
+    res.json(savedClient);
   } catch (err) {
-    console.error(err);
-    return res.status(500).json({ error: "Upload failed" });
+    res.status(500).json({ error: "Upload failed" });
   }
 });
 
-router.delete("/:id/documents/:docId", async (req, res) => {
+// 6. DELETE SINGLE DOCUMENT
+router.delete("/:clientId/documents/:docId", async (req, res) => {
   try {
-    const { id, docId } = req.params;
+    const { clientId, docId } = req.params;
 
-    const { resource: client } = await clientsContainer.item(id, id).read();
-
-    if (!client || !client.documents) {
-      return res.status(404).json({ error: "Client or document not found" });
-    }
+    const { resource: client } = await clientsContainer
+      .item(clientId, clientId)
+      .read();
+    if (!client || !client.documents)
+      return res.status(404).json({ error: "Not found" });
 
     const document = client.documents.find((d) => d.id === docId);
-    if (!document) {
-      return res.status(404).json({ error: "Document not found" });
-    }
+    if (!document) return res.status(404).json({ error: "Document not found" });
 
     const blobServiceClient = BlobServiceClient.fromConnectionString(
       process.env.AZURE_STORAGE_CONNECTION_STRING,
     );
-
     const containerClient =
       blobServiceClient.getContainerClient("client-files");
 
-    const blobPath = new URL(document.url).pathname.replace(/^\/[^/]+\//, "");
-    await containerClient.deleteBlob(blobPath);
+    let blobToDelete = document.blobName;
+    if (!blobToDelete) {
+      const urlParts = document.url.split("/");
+      blobToDelete = decodeURIComponent(urlParts[urlParts.length - 1]);
+    }
+
+    const blockBlobClient = containerClient.getBlockBlobClient(blobToDelete);
+    await blockBlobClient.deleteIfExists();
 
     client.documents = client.documents.filter((d) => d.id !== docId);
-
     const { resource: savedClient } = await clientsContainer
-      .item(id, id)
+      .item(clientId, clientId)
       .replace(client);
-
-    return res.json(savedClient);
+    res.json(savedClient);
   } catch (err) {
-    console.error(err);
-    return res.status(500).json({ error: "Delete failed" });
+    res.status(500).json({ error: "Delete failed" });
   }
 });
 
-// UPLOAD / UPDATE CLIENT AVATAR
 router.post("/:id/avatar", upload.single("file"), async (req, res) => {
   try {
     const { id } = req.params;
     const file = req.file;
+    if (!file) return res.status(400).json({ error: "No file" });
 
-    if (!file) {
-      return res.status(400).json({ error: "No file uploaded" });
-    }
-
-    if (!file.mimetype.startsWith("image/")) {
-      return res.status(400).json({ error: "File must be an image" });
-    }
+    const { resource: client } = await clientsContainer.item(id, id).read();
+    if (!client) return res.status(404).json({ error: "Client not found" });
 
     const blobServiceClient = BlobServiceClient.fromConnectionString(
       process.env.AZURE_STORAGE_CONNECTION_STRING,
     );
-
     const containerClient =
       blobServiceClient.getContainerClient("client-avatars");
-
-    const { resource: client } = await clientsContainer.item(id, id).read();
-
-    if (!client) {
-      return res.status(404).json({ error: "Client not found" });
-    }
-
-    if (client.avatarUrl) {
-      try {
-        const oldBlobPath = new URL(client.avatarUrl).pathname.replace(
-          /^\/[^/]+\//,
-          "",
-        );
-        await containerClient.deleteBlob(oldBlobPath);
-      } catch (e) {
-        console.warn("Failed to delete old avatar:", e.message);
-      }
-    }
 
     const avatarId = crypto.randomUUID();
     const extension = file.originalname.split(".").pop();
@@ -285,16 +268,12 @@ router.post("/:id/avatar", upload.single("file"), async (req, res) => {
 
     const blockBlobClient = containerClient.getBlockBlobClient(blobName);
     await blockBlobClient.uploadData(file.buffer, {
-      blobHTTPHeaders: {
-        blobContentType: file.mimetype,
-      },
+      blobHTTPHeaders: { blobContentType: file.mimetype },
     });
-
-    const avatarUrl = blockBlobClient.url;
 
     const updatedClient = {
       ...client,
-      avatarUrl,
+      avatarUrl: blockBlobClient.url,
       avatarThumbnailUrl: null,
       avatarUpdatedAt: new Date().toISOString(),
     };
@@ -302,29 +281,24 @@ router.post("/:id/avatar", upload.single("file"), async (req, res) => {
     const { resource: savedClient } = await clientsContainer
       .item(id, id)
       .replace(updatedClient);
-    // ==== QUEUE MESSAGE ====
 
     const queueClient = new QueueClient(
       process.env.AZURE_STORAGE_CONNECTION_STRING,
       "avatar-thumbnail-queue",
     );
-
     const messageData = {
       clientId: id,
       blobPath: blobName,
-      avatarUrl: avatarUrl,
+      avatarUrl: blockBlobClient.url,
     };
-
-    const messageString = JSON.stringify(messageData);
-    const base64Message = Buffer.from(messageString).toString("base64");
-
+    const base64Message = Buffer.from(JSON.stringify(messageData)).toString(
+      "base64",
+    );
     await queueClient.sendMessage(base64Message);
 
-    console.log("Wiadomość wysłana do kolejki!");
-    return res.json(savedClient);
+    res.json(savedClient);
   } catch (err) {
-    console.error("Avatar upload error:", err.message);
-    return res.status(500).json({ error: "Avatar upload failed" });
+    res.status(500).json({ error: "Avatar upload failed" });
   }
 });
 
