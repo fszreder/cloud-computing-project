@@ -7,6 +7,7 @@ export interface Client {
   phone: string | null;
   avatarUrl?: string;
   avatarThumbnailUrl?: string | null;
+  isVip?: boolean;
 
   documents?: {
     id: string;

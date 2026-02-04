@@ -12,14 +12,24 @@ export const getClients = async (): Promise<Client[]> => {
 };
 
 export const addClient = async (
-  data: Pick<Client, 'firstName' | 'lastName' | 'email' | 'phone'>
+  data: Pick<Client, 'firstName' | 'lastName' | 'email' | 'phone' | 'isVip'>,
+  avatarFile?: File
 ): Promise<Client> => {
+  const formData = new FormData();
+
+  formData.append('firstName', data.firstName);
+  formData.append('lastName', data.lastName);
+  formData.append('email', data.email);
+  if (data.phone) formData.append('phone', data.phone);
+
+  formData.append('isVip', String(data.isVip ?? false));
+  if (avatarFile) {
+    formData.append('avatar', avatarFile);
+  }
+
   const res = await fetch(`${API}/clients`, {
     method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify(data),
+    body: formData,
   });
 
   if (!res.ok) {
@@ -66,7 +76,7 @@ export const deleteClientDocument = async (
 
 export const updateClient = async (
   id: string,
-  data: Pick<Client, 'firstName' | 'lastName' | 'email' | 'phone'>
+  data: Pick<Client, 'firstName' | 'lastName' | 'email' | 'phone' | 'isVip'>
 ): Promise<Client> => {
   const res = await fetch(`${API}/clients/${id}`, {
     method: 'PUT',

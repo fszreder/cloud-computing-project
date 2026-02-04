@@ -23,30 +23,68 @@ router.get("/", async (req, res) => {
 });
 
 // POST new client
-router.post("/", async (req, res) => {
+router.post("/", upload.single("avatar"), async (req, res) => {
   try {
-    const { firstName, lastName, email, phone } = req.body;
+    const { firstName, lastName, email, phone, isVip } = req.body;
+    const file = req.file;
 
     if (!firstName || !lastName || !email) {
-      return res.status(400).json({
-        error: "first name, last name, and email are required",
+      return res.status(400).json({ error: "Required fields missing" });
+    }
+
+    const clientId = uuidv4();
+    let avatarUrl = null;
+    let blobName = null;
+
+    if (file) {
+      const blobServiceClient = BlobServiceClient.fromConnectionString(
+        process.env.AZURE_STORAGE_CONNECTION_STRING,
+      );
+      const containerClient =
+        blobServiceClient.getContainerClient("client-avatars");
+
+      const avatarId = crypto.randomUUID();
+      const extension = file.originalname.split(".").pop();
+      blobName = `${clientId}/${avatarId}.${extension}`;
+
+      const blockBlobClient = containerClient.getBlockBlobClient(blobName);
+      await blockBlobClient.uploadData(file.buffer, {
+        blobHTTPHeaders: { blobContentType: file.mimetype },
       });
+      avatarUrl = blockBlobClient.url;
     }
 
     const client = {
-      id: uuidv4(),
+      id: clientId,
       firstName,
       lastName,
       email,
       phone: phone || null,
+      isVip: !!isVip,
+      avatarUrl,
+      avatarThumbnailUrl: null,
+      documents: [],
       createdAt: new Date().toISOString(),
     };
 
     const { resource } = await clientsContainer.items.create(client);
+
+    if (file && avatarUrl) {
+      const queueClient = new QueueClient(
+        process.env.AZURE_STORAGE_CONNECTION_STRING,
+        "avatar-thumbnail-queue",
+      );
+      const messageData = { clientId, blobPath: blobName, avatarUrl };
+      const base64Message = Buffer.from(JSON.stringify(messageData)).toString(
+        "base64",
+      );
+      await queueClient.sendMessage(base64Message);
+    }
+
     res.status(201).json(resource);
   } catch (err) {
-    console.error("POST /clients error:", err.message);
-    res.status(500).json({ error: "Failed to create client" });
+    console.error("POST /clients error:", err);
+    res.status(500).json({ error: err.message });
   }
 });
 
@@ -77,7 +115,7 @@ router.delete("/:id", async (req, res) => {
 router.put("/:id", async (req, res) => {
   try {
     const { id } = req.params;
-    const { firstName, lastName, email, phone } = req.body;
+    const { firstName, lastName, email, phone, isVip } = req.body;
 
     if (!firstName || !lastName || !email) {
       return res.status(400).json({
@@ -100,6 +138,7 @@ router.put("/:id", async (req, res) => {
       email,
       phone: phone ?? null,
       updatedAt: new Date().toISOString(),
+      isVip: !!isVip,
     };
 
     const { resource } = await clientsContainer

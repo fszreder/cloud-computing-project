@@ -1,58 +1,34 @@
 import { useState } from 'react';
-import { uploadClientDocument } from '../api/clients';
-import type { Client } from '../types/Client';
 
 interface Props {
-  clientId: string;
-  onClientUpdated: (client: Client) => void;
+  loading: boolean;
+  onUpload: (file: File) => void;
 }
 
-export default function UploadPdf({ clientId, onClientUpdated }: Props) {
+export default function UploadPdf({ loading, onUpload }: Props) {
   const [fileName, setFileName] = useState<string | null>(null);
-  const [loading, setLoading] = useState(false);
 
-  const handleUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
-
     setFileName(file.name);
-    setLoading(true);
-
-    try {
-      const updatedClient = await uploadClientDocument(clientId, file);
-      onClientUpdated(updatedClient); // ← KLUCZ
-    } catch (err) {
-      console.error(err);
-      alert('Błąd uploadu PDF');
-    } finally {
-      setLoading(false);
-    }
+    onUpload(file);
   };
 
   return (
     <div className="mt-3 flex items-center gap-2">
       <label
-        className={`
-          ${loading ? 'bg-blue-400' : 'bg-blue-600 hover:bg-blue-700'}
-          text-white
-          px-3
-          py-1
-          rounded
-          cursor-pointer
-          transition-colors
-          text-sm
-        `}
+        className={`${loading ? 'bg-blue-400' : 'bg-blue-600 hover:bg-blue-700'} text-white px-3 py-1 rounded cursor-pointer transition-colors text-sm`}
       >
-        {loading ? 'Wysyłanie…' : 'Wybierz plik'}
+        {loading ? 'Wysyłanie…' : 'Dodaj dokument PDF'}
         <input
           type="file"
           accept="application/pdf"
-          onChange={handleUpload}
+          onChange={handleFileChange}
           className="hidden"
           disabled={loading}
         />
       </label>
-
       {fileName && (
         <span className="text-sm text-gray-600 truncate max-w-[200px]">
           {fileName}

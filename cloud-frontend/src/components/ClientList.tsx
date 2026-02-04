@@ -1,46 +1,58 @@
-import { useEffect, useState } from 'react';
-import { getClients, deleteClientApi } from '../api/clients';
-import type { Client } from '../types/Client';
+import { useClients } from '../hooks/useClients';
+import { useClientSearch } from '../hooks/useClientSearch';
+import { ClientSearch } from './ClientSearch';
 import ClientCard from './ClientCard';
 import AddClientForm from './AddClientForm';
+import type { Client } from '../types/Client';
 
 export default function ClientList() {
-  const [clients, setClients] = useState<Client[]>([]);
+  const {
+    clients,
+    isLoading,
+    removeClient,
+    addClientToState,
+    updateClientInState,
+  } = useClients();
 
-  useEffect(() => {
-    getClients().then(setClients).catch(console.error);
-  }, []);
+  const { searchTerm, setSearchTerm, filteredClients } =
+    useClientSearch(clients);
 
-  const deleteClient = async (id: string) => {
-    if (!confirm('Na pewno usunąć klienta?')) return;
-
-    await deleteClientApi(id);
-    setClients((prev) => prev.filter((c) => c.id !== id));
-  };
-
-  const handleClientAdded = (client: Client) => {
-    setClients((prev) => [client, ...prev]);
-  };
-
-  const handleClientUpdated = (updatedClient: Client) => {
-    setClients((prev) =>
-      prev.map((c) => (c.id === updatedClient.id ? updatedClient : c))
+  if (isLoading && clients.length === 0) {
+    return (
+      <div className="flex justify-center py-10">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+        <span className="ml-3 text-slate-500 font-medium">
+          Ładowanie bazy...
+        </span>
+      </div>
     );
-  };
+  }
 
   return (
-    <div>
-      <AddClientForm onClientAdded={handleClientAdded} />
+    <div className="space-y-8">
+      <AddClientForm onClientAdded={addClientToState} />
 
-      <div className="space-y-4">
-        {clients.map((c) => (
-          <ClientCard
-            key={c.id}
-            client={c}
-            onDelete={deleteClient}
-            onClientUpdated={handleClientUpdated}
-          />
-        ))}
+      <div className="space-y-6">
+        <ClientSearch searchTerm={searchTerm} setSearchTerm={setSearchTerm} />
+
+        <div className="grid gap-6">
+          {filteredClients.map((c: Client) => (
+            <ClientCard
+              key={c.id}
+              client={c}
+              onDelete={removeClient}
+              onClientUpdated={updateClientInState}
+            />
+          ))}
+
+          {filteredClients.length === 0 && searchTerm && (
+            <div className="text-center py-10 bg-white rounded-xl border-2 border-dashed border-slate-200">
+              <p className="text-slate-400 font-medium">
+                Nie znaleziono klienta: "{searchTerm}"
+              </p>
+            </div>
+          )}
+        </div>
       </div>
     </div>
   );

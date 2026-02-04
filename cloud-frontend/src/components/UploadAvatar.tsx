@@ -10,7 +10,16 @@ export default function UploadAvatar({ client, previewUrl }: Props) {
     previewUrl || client.avatarThumbnailUrl || client.avatarUrl;
 
   return (
-    <div className="w-24 h-24 rounded overflow-hidden bg-gray-200 flex items-center justify-center border border-gray-100 shadow-inner">
+    <div
+      className={`
+      w-24 h-24 rounded overflow-hidden flex items-center justify-center transition-all duration-300
+      ${
+        client.isVip
+          ? 'ring-4 ring-yellow-400 border-2 border-white shadow-lg'
+          : 'bg-gray-200 border border-gray-100 shadow-inner'
+      }
+    `}
+    >
       {initialSrc ? (
         <img
           src={initialSrc}
@@ -19,9 +28,7 @@ export default function UploadAvatar({ client, previewUrl }: Props) {
           onError={(e) => {
             const target = e.target as HTMLImageElement;
             if (client.avatarUrl && target.src !== client.avatarUrl) {
-              console.warn(
-                'Fallback: Ładowanie oryginału zamiast miniatury/podglądu'
-              );
+              console.log('Thumbnail jeszcze niedostępny, ładuję oryginał...');
               target.src = client.avatarUrl;
             }
           }}
