@@ -22,7 +22,10 @@ export const getClients = async (): Promise<Client[]> => {
 };
 
 export const addClient = async (
-  data: Pick<Client, 'firstName' | 'lastName' | 'email' | 'phone' | 'isVip'>,
+  data: Pick<
+    Client,
+    'firstName' | 'lastName' | 'email' | 'phone' | 'isVip' | 'isBlacklisted'
+  >,
   avatarFile?: File
 ): Promise<Client> => {
   const formData = new FormData();
@@ -31,6 +34,7 @@ export const addClient = async (
   formData.append('email', data.email);
   if (data.phone) formData.append('phone', data.phone);
   formData.append('isVip', String(data.isVip ?? false));
+  formData.append('isBlacklisted', String(data.isBlacklisted ?? false));
 
   if (avatarFile) formData.append('avatar', avatarFile);
 
@@ -81,7 +85,10 @@ export const deleteClientDocument = async (
 
 export const updateClient = async (
   id: string,
-  data: Pick<Client, 'firstName' | 'lastName' | 'email' | 'phone' | 'isVip'>
+  data: Pick<
+    Client,
+    'firstName' | 'lastName' | 'email' | 'phone' | 'isVip' | 'isBlacklisted'
+  >
 ): Promise<Client> => {
   const res = await fetch(`${API}/clients/${id}`, {
     method: 'PUT',
@@ -98,7 +105,7 @@ export const uploadClientAvatar = async (
   file: File
 ): Promise<Client> => {
   const formData = new FormData();
-  formData.append('file', file);
+  formData.append('avatar', file);
 
   const res = await fetch(`${API}/clients/${clientId}/avatar`, {
     method: 'POST',

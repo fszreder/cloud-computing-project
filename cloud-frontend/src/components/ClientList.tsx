@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { useClients } from '../hooks/useClients';
 import { useClientSearch } from '../hooks/useClientSearch';
 import { ClientSearch } from './ClientSearch';
@@ -19,6 +20,22 @@ export default function ClientList() {
   const { searchTerm, setSearchTerm, filteredClients } =
     useClientSearch(clients);
 
+  const [sortOrder, setSortOrder] = useState<'newest' | 'oldest' | 'alpha'>(
+    'newest'
+  );
+
+  const blacklistedClients = clients.filter((c) => c.isBlacklisted);
+  const visibleActiveClients = filteredClients.filter((c) => !c.isBlacklisted);
+
+  const sortedClients = [...visibleActiveClients].sort((a, b) => {
+    if (sortOrder === 'alpha') {
+      return a.lastName.localeCompare(b.lastName);
+    }
+    const dateA = new Date(a.createdAt || 0).getTime();
+    const dateB = new Date(b.createdAt || 0).getTime();
+    return sortOrder === 'newest' ? dateB - dateA : dateA - dateB;
+  });
+
   if (isLoading && clients.length === 0) {
     return (
       <div className="space-y-8">
@@ -34,21 +51,94 @@ export default function ClientList() {
 
   return (
     <div className="space-y-8 pb-20">
+      {blacklistedClients.length > 0 && (
+        <div className="mb-12">
+          <details className="group border-2 border-red-100 rounded-2xl bg-white shadow-sm overflow-hidden transition-all duration-300 open:shadow-md">
+            <summary className="list-none p-4 cursor-pointer flex justify-between items-center bg-red-50/50 hover:bg-red-50 transition-colors">
+              <div className="flex items-center gap-3">
+                <div className="bg-red-600 text-white p-1.5 rounded-lg shadow-sm">
+                  <svg
+                    className="w-5 h-5"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth="2.5"
+                      d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636"
+                    />
+                  </svg>
+                </div>
+                <div>
+                  <h3 className="font-black text-red-700 tracking-tight uppercase text-sm">
+                    Lista Wstydu
+                  </h3>
+                  <p className="text-[11px] text-red-500 font-medium">
+                    {blacklistedClients.length} klientów na czarnej liście
+                  </p>
+                </div>
+              </div>
+              <div className="flex items-center gap-4">
+                <span className="text-xs font-bold text-red-400 group-open:hidden">
+                  ROZWIŃ LISTĘ
+                </span>
+                <div className="text-red-400 group-open:rotate-180 transition-transform duration-300">
+                  <svg
+                    className="w-5 h-5"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth="3"
+                      d="M19 9l-7 7-7-7"
+                    />
+                  </svg>
+                </div>
+              </div>
+            </summary>
+            <div className="p-6 bg-red-50/20 border-t border-red-100">
+              <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-2">
+                <AnimatePresence>
+                  {blacklistedClients.map((c) => (
+                    <motion.div
+                      key={c.id}
+                      initial={{ opacity: 0, scale: 0.9 }}
+                      animate={{ opacity: 1, scale: 1 }}
+                    >
+                      <ClientCard
+                        client={c}
+                        onDelete={removeClient}
+                        onClientUpdated={updateClientInState}
+                        searchTerm=""
+                      />
+                    </motion.div>
+                  ))}
+                </AnimatePresence>
+              </div>
+            </div>
+          </details>
+        </div>
+      )}
       <div className="flex flex-col md:flex-row md:items-end justify-between gap-4">
         <div>
-          <h1 className="text-3xl font-black text-slate-900 tracking-tight">
-            Klienci
+          <h1 className="text-4xl font-black text-slate-900 tracking-tight">
+            Klienci <span className="text-blue-600">Premium</span>
           </h1>
           <p className="text-slate-500 font-medium">
-            Zarządzaj swoją bazą i dokumentami Azure.
+            Zarządzaj autoryzowaną bazą klientów w chmurze Azure.
           </p>
         </div>
         <div className="flex gap-2">
-          <div className="bg-blue-50 px-3 py-1 rounded-full border border-blue-100 text-blue-700 text-xs font-bold uppercase">
-            Suma: {clients.length}
+          <div className="bg-blue-50 px-3 py-1.5 rounded-full border border-blue-100 text-blue-700 text-xs font-bold uppercase shadow-sm">
+            Aktywni: {visibleActiveClients.length}
           </div>
-          <div className="bg-yellow-50 px-3 py-1 rounded-full border border-yellow-100 text-yellow-700 text-xs font-bold uppercase">
-            VIP: {clients.filter((c) => c.isVip).length}
+          <div className="bg-yellow-50 px-3 py-1.5 rounded-full border border-yellow-100 text-yellow-700 text-xs font-bold uppercase shadow-sm">
+            VIP: {visibleActiveClients.filter((c) => c.isVip).length}
           </div>
         </div>
       </div>
@@ -56,13 +146,44 @@ export default function ClientList() {
       <hr className="border-slate-100" />
 
       <AddClientForm onClientAdded={addClientToState} />
-
       <div className="space-y-6">
-        <ClientSearch searchTerm={searchTerm} setSearchTerm={setSearchTerm} />
+        <div className="flex flex-col md:flex-row md:items-center gap-4">
+          <div className="flex-1">
+            <ClientSearch
+              searchTerm={searchTerm}
+              setSearchTerm={setSearchTerm}
+            />
+          </div>
+          <div className="flex items-center gap-3 bg-slate-50 p-2 rounded-xl border border-slate-100">
+            <span className="text-[10px] font-black text-slate-400 uppercase ml-2">
+              Sortuj:
+            </span>
+            <div className="flex bg-white p-1 rounded-lg shadow-sm border border-slate-200">
+              <button
+                onClick={() => setSortOrder('newest')}
+                className={`px-3 py-1 text-xs font-bold rounded-md transition-all ${sortOrder === 'newest' ? 'bg-blue-600 text-white shadow-md' : 'text-slate-500 hover:bg-slate-50'}`}
+              >
+                Nowi
+              </button>
+              <button
+                onClick={() => setSortOrder('oldest')}
+                className={`px-3 py-1 text-xs font-bold rounded-md transition-all ${sortOrder === 'oldest' ? 'bg-blue-600 text-white shadow-md' : 'text-slate-500 hover:bg-slate-50'}`}
+              >
+                Starzy
+              </button>
+              <button
+                onClick={() => setSortOrder('alpha')}
+                className={`px-3 py-1 text-xs font-bold rounded-md transition-all ${sortOrder === 'alpha' ? 'bg-blue-600 text-white shadow-md' : 'text-slate-500 hover:bg-slate-50'}`}
+              >
+                A-Z
+              </button>
+            </div>
+          </div>
+        </div>
 
         <div className="grid gap-6 relative">
           <AnimatePresence mode="popLayout">
-            {filteredClients.map((c: Client) => (
+            {sortedClients.map((c: Client) => (
               <motion.div
                 key={c.id}
                 layout
@@ -81,7 +202,7 @@ export default function ClientList() {
             ))}
           </AnimatePresence>
 
-          {filteredClients.length === 0 && searchTerm && (
+          {sortedClients.length === 0 && searchTerm && (
             <motion.div
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}

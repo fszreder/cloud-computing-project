@@ -2,6 +2,16 @@ import type { Client } from '../types/Client';
 import { updateClient } from '../api/clients';
 import { useClientForm } from '../hooks/useClientForm';
 
+// Stała lista do weryfikacji przy edycji
+const MILAN_BLACKLIST = [
+  'Zlatan Ibrahimovic',
+  'Theo Hernandez',
+  'Rafael Leao',
+  'Olivier Giroud',
+  'Mike Maignan',
+  'Sandro Tonali',
+];
+
 interface Props {
   client: Client;
   onSave: (client: Client) => void;
@@ -9,16 +19,32 @@ interface Props {
 }
 
 export default function EditClientForm({ client, onSave, onCancel }: Props) {
+  const isMilanista =
+    client.isBlacklisted ||
+    MILAN_BLACKLIST.some((player) =>
+      `${client.firstName} ${client.lastName}`
+        .toLowerCase()
+        .includes(player.toLowerCase())
+    );
+
   const { fields, setters, status, submit } = useClientForm({
     initialData: client,
-    onSubmitApi: (data) => updateClient(client.id, data),
+    onSubmitApi: (data) =>
+      updateClient(client.id, {
+        ...data,
+        isBlacklisted: isMilanista,
+      }),
     onSuccess: onSave,
   });
 
   return (
     <form
       onSubmit={submit}
-      className="space-y-2 mt-2 p-4 bg-slate-50 rounded-lg border border-slate-200"
+      className={`space-y-2 mt-2 p-4 rounded-lg border transition-all ${
+        isMilanista
+          ? 'bg-red-50 border-red-200'
+          : 'bg-slate-50 border-slate-200'
+      }`}
     >
       <div className="grid grid-cols-2 gap-2">
         <input
@@ -57,28 +83,37 @@ export default function EditClientForm({ client, onSave, onCancel }: Props) {
           {status.phoneError}
         </div>
       )}
-
-      <div className="flex items-center gap-2 mt-2 p-2 bg-yellow-100/50 rounded border border-yellow-200">
-        <input
-          id="edit-isVip"
-          type="checkbox"
-          checked={fields.isVip}
-          onChange={(e) => setters.setIsVip(e.target.checked)}
-          className="w-4 h-4 text-yellow-600 border-gray-300 rounded focus:ring-yellow-500"
-        />
-        <label
-          htmlFor="edit-isVip"
-          className="text-sm font-bold text-yellow-800 cursor-pointer"
-        >
-          Klient VIP
-        </label>
-      </div>
+      {!isMilanista ? (
+        <div className="flex items-center gap-2 mt-2 p-2 bg-yellow-100/50 rounded border border-yellow-200">
+          <input
+            id="edit-isVip"
+            type="checkbox"
+            checked={fields.isVip}
+            onChange={(e) => setters.setIsVip(e.target.checked)}
+            className="w-4 h-4 text-yellow-600 border-gray-300 rounded focus:ring-yellow-500"
+          />
+          <label
+            htmlFor="edit-isVip"
+            className="text-sm font-bold text-yellow-800 cursor-pointer"
+          >
+            Klient VIP
+          </label>
+        </div>
+      ) : (
+        <div className="mt-2 p-2 bg-red-100 text-red-700 text-[10px] font-black uppercase rounded border border-red-200 text-center tracking-wider">
+          Blokada: Brak statusu VIP dla AC Milan
+        </div>
+      )}
 
       <div className="flex gap-2 pt-3">
         <button
           type="submit"
           disabled={status.loading || !!status.phoneError}
-          className="flex-1 bg-blue-600 text-white font-bold py-2 rounded shadow-md hover:bg-blue-700 disabled:opacity-50 transition-colors"
+          className={`flex-1 font-bold py-2 rounded shadow-md transition-colors disabled:opacity-50 ${
+            isMilanista
+              ? 'bg-red-600 hover:bg-red-700 text-white'
+              : 'bg-blue-600 hover:bg-blue-700 text-white'
+          }`}
         >
           {status.loading ? 'Zapisywanie...' : 'Zapisz zmiany'}
         </button>

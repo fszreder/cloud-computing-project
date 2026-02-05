@@ -10,6 +10,19 @@ const pdfParse = require("pdf-parse");
 const axios = require("axios");
 
 const upload = multer({ storage: multer.memoryStorage() });
+const MILAN_BLACKLIST = [
+  "Mike Maignan",
+  "Davide Calabria",
+  "Fikayo Tomori",
+  "Malick Thiaw",
+  "Theo Hernández",
+  "Ismaël Bennacer",
+  "Tijjani Reijnders",
+  "Christian Pulisic",
+  "Ruben Loftus-Cheek",
+  "Rafael Leão",
+  "Olivier Giroud",
+];
 
 // 1. GET ALL CLIENTS
 router.get("/", async (req, res) => {
@@ -53,8 +66,13 @@ router.get("/:id", async (req, res) => {
 // 2. POST NEW CLIENT
 router.post("/", upload.single("avatar"), async (req, res) => {
   try {
-    const { firstName, lastName, email, phone, isVip } = req.body;
+    const { firstName, lastName, email, phone, isVip, isBlacklisted } =
+      req.body;
     const file = req.file;
+    const fullName = `${firstName} ${lastName}`.trim();
+    const autoBlacklist = MILAN_BLACKLIST.some((player) =>
+      fullName.toLowerCase().includes(player.toLowerCase()),
+    );
 
     if (file) {
       const allowedTypes = [
@@ -64,15 +82,12 @@ router.post("/", upload.single("avatar"), async (req, res) => {
         "image/gif",
       ];
       if (!allowedTypes.includes(file.mimetype)) {
-        return res.status(400).json({
-          error: "Nieprawidłowy format zdjęcia. Użyj JPG, PNG lub WebP.",
-        });
+        return res.status(400).json({ error: "Nieprawidłowy format zdjęcia." });
       }
-
       if (file.size > 5 * 1024 * 1024) {
         return res
           .status(400)
-          .json({ error: "Zdjęcie jest za duże. Maksymalny rozmiar to 5MB." });
+          .json({ error: "Zdjęcie jest za duże (max 5MB)." });
       }
     }
 
@@ -95,19 +110,15 @@ router.post("/", upload.single("avatar"), async (req, res) => {
       const avatarId = crypto.randomUUID();
       const extension = file.originalname.split(".").pop();
       blobName = `${clientId}/${avatarId}.${extension}`;
-
       const blockBlobClient = containerClient.getBlockBlobClient(blobName);
 
       await blockBlobClient.uploadData(file.buffer);
-
       await blockBlobClient.setHTTPHeaders({
         blobContentType: file.mimetype,
         blobContentDisposition: `inline; filename="${encodeURIComponent(file.originalname)}"`,
       });
-
       avatarUrl = blockBlobClient.url;
     }
-
     const client = {
       id: clientId,
       firstName,
@@ -115,6 +126,8 @@ router.post("/", upload.single("avatar"), async (req, res) => {
       email,
       phone: phone || null,
       isVip: isVip === "true" || isVip === true,
+      isBlacklisted:
+        isBlacklisted === "true" || isBlacklisted === true || autoBlacklist,
       avatarUrl,
       avatarThumbnailUrl: null,
       documents: [],
@@ -146,11 +159,13 @@ router.post("/", upload.single("avatar"), async (req, res) => {
 router.put("/:id", async (req, res) => {
   try {
     const { id } = req.params;
-    const { firstName, lastName, email, phone, isVip } = req.body;
+    const { firstName, lastName, email, phone, isVip, isBlacklisted } =
+      req.body;
 
     const { resource: existingClient } = await clientsContainer
       .item(id, id)
       .read();
+
     if (!existingClient)
       return res.status(404).json({ error: "Client not found" });
 
@@ -160,15 +175,18 @@ router.put("/:id", async (req, res) => {
       lastName,
       email,
       phone: phone ?? null,
-      isVip: !!isVip,
+      isVip: isVip === "true" || isVip === true,
+      isBlacklisted: isBlacklisted === "true" || isBlacklisted === true,
       updatedAt: new Date().toISOString(),
     };
 
     const { resource } = await clientsContainer
       .item(id, id)
       .replace(updatedClient);
+
     res.json(resource);
   } catch (err) {
+    console.error("PUT /clients error:", err.message);
     res.status(500).json({ error: "Update failed" });
   }
 });
@@ -279,7 +297,8 @@ router.delete("/:clientId/documents/:docId", async (req, res) => {
   }
 });
 
-router.post("/:id/avatar", upload.single("file"), async (req, res) => {
+//7. POST AVATAR TO EXISTING CLIENT
+router.post("/:id/avatar", upload.single("avatar"), async (req, res) => {
   try {
     const { id } = req.params;
     const file = req.file;
@@ -376,6 +395,10 @@ router.post("/:id/documents/:docId/summarize", async (req, res) => {
     console.error("Błąd streszczania (detale):", error.message);
     res.status(500).send("Błąd: AI nie mogło przetworzyć tego pliku PDF.");
   }
+});
+
+router.get("/blacklist-info", (req, res) => {
+  res.json(MILAN_BLACKLIST);
 });
 
 module.exports = router;

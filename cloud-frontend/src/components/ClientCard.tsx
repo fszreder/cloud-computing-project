@@ -10,6 +10,20 @@ import DeleteConfirmationModal from './DeleteConfirmationModal';
 import { useClientActions } from '../hooks/useClientActions';
 import DocumentPreviewModal from './DocumentPreviewModal';
 
+const MILAN_BLACKLIST = [
+  'Mike Maignan',
+  'Davide Calabria',
+  'Fikayo Tomori',
+  'Malick Thiaw',
+  'Theo Hernández',
+  'Ismaël Bennacer',
+  'Tijjani Reijnders',
+  'Christian Pulisic',
+  'Ruben Loftus-Cheek',
+  'Rafael Leão',
+  'Olivier Giroud',
+];
+
 interface Props {
   client: Client;
   onDelete: (id: string) => void;
@@ -27,6 +41,11 @@ export default function ClientCard({
     client,
     onClientUpdated,
     onDelete
+  );
+
+  const fullName = `${client.firstName} ${client.lastName}`;
+  const isBlacklisted = MILAN_BLACKLIST.some((player) =>
+    fullName.toLowerCase().includes(player.toLowerCase())
   );
 
   useEffect(() => {
@@ -93,12 +112,20 @@ export default function ClientCard({
 
   return (
     <div
-      className={`p-4 rounded-xl shadow-sm transition-all duration-300 ${
-        client.isVip
-          ? 'bg-gradient-to-br from-yellow-50 to-white border-2 border-yellow-400'
-          : 'bg-white border border-gray-100'
+      className={`relative p-4 rounded-xl shadow-sm transition-all duration-300 ${
+        isBlacklisted
+          ? 'bg-red-50 border-2 border-red-600 animate-pulse shadow-red-100'
+          : client.isVip
+            ? 'bg-gradient-to-br from-yellow-50 to-white border-2 border-yellow-400'
+            : 'bg-white border border-gray-100'
       }`}
     >
+      {isBlacklisted && (
+        <span className="absolute -top-3 left-4 bg-red-600 text-white text-[10px] font-black px-2 py-0.5 rounded-full uppercase shadow-sm z-10 border border-white">
+          ⚠️ Persona Non Grata
+        </span>
+      )}
+
       <div className="flex items-start gap-4">
         <UploadAvatar client={client} previewUrl={state.previewUrl} />
 
@@ -112,7 +139,9 @@ export default function ClientCard({
           ) : (
             <div className="space-y-1">
               <div className="flex items-center gap-2 flex-wrap">
-                <div className="font-bold text-xl text-gray-900 leading-tight">
+                <div
+                  className={`font-bold text-xl leading-tight ${isBlacklisted ? 'text-red-700' : 'text-gray-900'}`}
+                >
                   {highlightText(
                     `${client.firstName} ${client.lastName}`,
                     searchTerm
@@ -124,10 +153,20 @@ export default function ClientCard({
                   </span>
                 )}
               </div>
+
+              {/* Sekcja AI Status */}
               {client.aiDescription ? (
                 <div className="flex items-center gap-1.5 py-0.5">
-                  <span className="relative inline-flex rounded-full h-2 w-2 bg-purple-500"></span>
-                  <span className="text-[11px] font-semibold text-purple-700 bg-purple-50 px-2 py-0.5 rounded-md border border-purple-100 italic shadow-sm">
+                  <span
+                    className={`relative inline-flex rounded-full h-2 w-2 ${isBlacklisted ? 'bg-red-500' : 'bg-purple-500'}`}
+                  ></span>
+                  <span
+                    className={`text-[11px] font-semibold italic px-2 py-0.5 rounded-md border shadow-sm ${
+                      isBlacklisted
+                        ? 'text-red-700 bg-red-100 border-red-200'
+                        : 'text-purple-700 bg-purple-50 border-purple-100'
+                    }`}
+                  >
                     AI: {client.aiDescription}
                   </span>
                 </div>
@@ -150,10 +189,13 @@ export default function ClientCard({
           )}
         </div>
       </div>
+
       {!state.isEditing && (
         <div className="mt-6 border-t border-gray-50 pt-4 space-y-3">
-          <h4 className="text-xs font-bold text-gray-400 uppercase tracking-wider">
-            Dokumenty klienta
+          <h4
+            className={`text-xs font-bold uppercase tracking-wider ${isBlacklisted ? 'text-red-400' : 'text-gray-400'}`}
+          >
+            Dokumenty klienta {isBlacklisted && '(POD NADZOREM)'}
           </h4>
           <ClientDocuments
             documents={client.documents}
@@ -168,7 +210,9 @@ export default function ClientCard({
           />
 
           <div className="flex gap-2 mt-4">
-            <label className="bg-blue-600 text-white px-4 py-2 text-sm font-medium rounded-md cursor-pointer hover:bg-blue-700">
+            <label
+              className={`${isBlacklisted ? 'bg-red-600 hover:bg-red-700' : 'bg-blue-600 hover:bg-blue-700'} text-white px-4 py-2 text-sm font-medium rounded-md cursor-pointer`}
+            >
               {state.avatarLoading ? 'Przetwarzanie...' : 'Zmień avatar'}
               <input
                 type="file"
@@ -194,6 +238,7 @@ export default function ClientCard({
         </div>
       )}
 
+      {/* MODALE POZOSTAJĄ BEZ ZMIAN */}
       <DeleteConfirmationModal
         isOpen={state.isDeleteModalOpen}
         onClose={() => actions.setIsDeleteModalOpen(false)}

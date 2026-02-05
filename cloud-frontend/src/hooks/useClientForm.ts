@@ -19,6 +19,12 @@ export const useClientForm = ({
   const [email, setEmail] = useState(initialData.email || '');
   const [phone, setPhone] = useState(initialData.phone || '');
   const [isVip, setIsVip] = useState(initialData.isVip || false);
+
+  // 1. NOWE POLE STANU
+  const [isBlacklisted, setIsBlacklisted] = useState(
+    initialData.isBlacklisted || false
+  );
+
   const [loading, setLoading] = useState(false);
   const [phoneError, setPhoneError] = useState<string | null>(null);
 
@@ -42,6 +48,8 @@ export const useClientForm = ({
     setEmail('');
     setPhone('');
     setIsVip(false);
+    // 2. RESETOWANIE NOWEGO POLA
+    setIsBlacklisted(false);
     setPhoneError(null);
   };
 
@@ -51,12 +59,14 @@ export const useClientForm = ({
 
     setLoading(true);
     try {
+      // 3. WYSYŁKA NOWEGO POLA DO API
       const result = await onSubmitApi({
         firstName,
         lastName,
         email,
         phone: phone || null,
         isVip,
+        isBlacklisted,
       });
 
       onSuccess(result);
@@ -80,13 +90,15 @@ export const useClientForm = ({
   };
 
   return {
-    fields: { firstName, lastName, email, phone, isVip },
+    // 4. UDOSTĘPNIENIE POLA I SETTERA
+    fields: { firstName, lastName, email, phone, isVip, isBlacklisted },
     setters: {
       setFirstName,
       setLastName,
       setEmail,
       handlePhoneChange,
       setIsVip,
+      setIsBlacklisted,
     },
     status: { loading, phoneError, setLoading },
     submit,

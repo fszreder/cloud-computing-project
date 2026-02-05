@@ -40,6 +40,7 @@ app.use((req, res, next) => {
     "fszreder",
     "Ola",
     "OlaBluszcz",
+    "a.bluszcz.312@studms.ug.edu.pl",
   ].map((a) => a.toLowerCase());
 
   if (["POST", "DELETE", "PUT"].includes(req.method)) {

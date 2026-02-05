@@ -9,6 +9,7 @@ export interface Client {
   avatarThumbnailUrl?: string | null;
   aiDescription?: string;
   isVip?: boolean;
+  isBlacklisted: boolean;
 
   documents?: {
     id: string;

@@ -4,6 +4,20 @@ import type { Client } from '../types/Client';
 import { useClientForm } from '../hooks/useClientForm';
 import toast from 'react-hot-toast';
 
+const MILAN_BLACKLIST = [
+  'Mike Maignan',
+  'Davide Calabria',
+  'Fikayo Tomori',
+  'Malick Thiaw',
+  'Theo Hernández',
+  'Ismaël Bennacer',
+  'Tijjani Reijnders',
+  'Christian Pulisic',
+  'Ruben Loftus-Cheek',
+  'Rafael Leão',
+  'Olivier Giroud',
+];
+
 interface Props {
   onClientAdded: (client: Client) => void;
 }
@@ -13,7 +27,14 @@ export default function AddClientForm({ onClientAdded }: Props) {
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const { fields, setters, status, reset } = useClientForm({
-    initialData: {},
+    initialData: {
+      firstName: '',
+      lastName: '',
+      email: '',
+      phone: '',
+      isVip: false,
+      isBlacklisted: false,
+    },
     onSubmitApi: (data) => addClient(data, avatar || undefined),
     onSuccess: (newClient) => {
       onClientAdded(newClient);
@@ -23,26 +44,23 @@ export default function AddClientForm({ onClientAdded }: Props) {
     },
   });
 
+  const fullName = `${fields.firstName} ${fields.lastName}`.trim();
+  const isMilanista = MILAN_BLACKLIST.some((player) =>
+    fullName.toLowerCase().includes(player.toLowerCase())
+  );
+
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
-
     if (file) {
       const allowedTypes = ['image/jpeg', 'image/png', 'image/webp'];
       if (!allowedTypes.includes(file.type)) {
         toast.error('Błąd: Wybierz zdjęcie w formacie JPG, PNG lub WebP!');
-        if (fileInputRef.current) fileInputRef.current.value = '';
-        setAvatar(null);
         return;
       }
-
-      const MAX_SIZE = 5 * 1024 * 1024;
-      if (file.size > MAX_SIZE) {
+      if (file.size > 5 * 1024 * 1024) {
         toast.error('Błąd: Zdjęcie jest za duże (maksymalnie 5MB)!');
-        if (fileInputRef.current) fileInputRef.current.value = '';
-        setAvatar(null);
         return;
       }
-
       setAvatar(file);
     }
   };
@@ -66,7 +84,8 @@ export default function AddClientForm({ onClientAdded }: Props) {
           lastName: fields.lastName,
           email: fields.email,
           phone: fields.phone || null,
-          isVip: fields.isVip,
+          isVip: isMilanista ? false : fields.isVip,
+          isBlacklisted: isMilanista,
         },
         avatar || undefined
       ),
@@ -77,7 +96,9 @@ export default function AddClientForm({ onClientAdded }: Props) {
           reset();
           setAvatar(null);
           if (fileInputRef.current) fileInputRef.current.value = '';
-          return `Klient ${newClient.firstName} został dodany! 🚀`;
+          return isMilanista
+            ? `Zawodnik AC Milan wykryty. Dodano do Listy Wstydu. 🚫`
+            : `Klient ${newClient.firstName} został dodany! 🚀`;
         },
         error: (err) => `Błąd: ${err.message || 'Nie udało się dodać klienta'}`,
       }
@@ -87,21 +108,36 @@ export default function AddClientForm({ onClientAdded }: Props) {
   return (
     <form
       onSubmit={handleCustomSubmit}
-      className="bg-white p-4 rounded shadow mb-6 space-y-3 border-l-4 border-blue-500 shadow-sm"
+      className={`bg-white p-6 rounded-2xl shadow-sm mb-10 space-y-4 border-l-8 transition-all duration-500 ${
+        isMilanista
+          ? 'border-red-600 bg-red-50/20'
+          : 'border-blue-600 shadow-blue-50'
+      }`}
     >
-      <h2 className="text-xl font-semibold text-gray-800">
-        Dodaj nowego klienta
-      </h2>
+      <div className="flex justify-between items-center">
+        <h2
+          className={`text-2xl font-black tracking-tighter uppercase ${isMilanista ? 'text-red-700' : 'text-slate-800'}`}
+        >
+          {isMilanista
+            ? '🚨 Wykryto Milanistę 🚨'
+            : 'Rejestracja Nowego Klienta'}
+        </h2>
+        {isMilanista && (
+          <span className="animate-bounce bg-red-600 text-white text-[10px] px-2 py-1 rounded-md font-bold">
+            INTER FANS ONLY
+          </span>
+        )}
+      </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <input
-          className="w-full border p-2 rounded focus:ring-2 focus:ring-blue-500 outline-none transition-all"
+          className="w-full border-2 border-slate-100 p-3 rounded-xl focus:border-blue-500 outline-none transition-all font-medium"
           placeholder="Imię"
           value={fields.firstName}
           onChange={(e) => setters.setFirstName(e.target.value)}
         />
         <input
-          className="w-full border p-2 rounded focus:ring-2 focus:ring-blue-500 outline-none transition-all"
+          className="w-full border-2 border-slate-100 p-3 rounded-xl focus:border-blue-500 outline-none transition-all font-medium"
           placeholder="Nazwisko"
           value={fields.lastName}
           onChange={(e) => setters.setLastName(e.target.value)}
@@ -109,8 +145,8 @@ export default function AddClientForm({ onClientAdded }: Props) {
       </div>
 
       <input
-        className="w-full border p-2 rounded focus:ring-2 focus:ring-blue-500 outline-none transition-all"
-        placeholder="Email"
+        className="w-full border-2 border-slate-100 p-3 rounded-xl focus:border-blue-500 outline-none transition-all font-medium"
+        placeholder="Adres e-mail"
         type="email"
         value={fields.email}
         onChange={(e) => setters.setEmail(e.target.value)}
@@ -119,66 +155,69 @@ export default function AddClientForm({ onClientAdded }: Props) {
       <input
         value={fields.phone}
         onChange={(e) => setters.handlePhoneChange(e.target.value)}
-        className={`border rounded px-2 py-2 w-full focus:ring-2 focus:ring-blue-500 outline-none ${
-          status.phoneError ? 'border-red-500' : ''
+        className={`w-full border-2 p-3 rounded-xl outline-none transition-all font-medium ${
+          status.phoneError
+            ? 'border-red-400 bg-red-50'
+            : 'border-slate-100 focus:border-blue-500'
         }`}
-        placeholder="Telefon (opcjonalnie)"
+        placeholder="Telefon (np. 123456789)"
       />
-      {status.phoneError && (
-        <div className="text-sm text-red-600 font-medium">
-          {status.phoneError}
-        </div>
-      )}
 
-      <div className="space-y-1 py-2 border-y border-slate-50">
-        <label className="block text-xs font-bold text-slate-400 uppercase tracking-wider">
-          Zdjęcie profilowe (JPG, PNG, WebP)
+      <div className="py-2 border-y border-slate-50 space-y-2">
+        <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">
+          Wgraj Avatar
         </label>
-        <div className="flex items-center gap-3">
-          <input
-            type="file"
-            accept="image/jpeg,image/png,image/webp"
-            ref={fileInputRef}
-            onChange={handleFileChange}
-            className="text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100 cursor-pointer"
-          />
-          {avatar && (
-            <button
-              type="button"
-              onClick={() => {
-                setAvatar(null);
-                if (fileInputRef.current) fileInputRef.current.value = '';
-              }}
-              className="text-xs text-red-500 font-bold hover:underline"
-            >
-              Usuń plik
-            </button>
-          )}
-        </div>
+        <input
+          type="file"
+          accept="image/*"
+          ref={fileInputRef}
+          onChange={handleFileChange}
+          className="text-xs text-slate-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-xs file:font-bold file:bg-slate-100 file:text-slate-700 hover:file:bg-slate-200 cursor-pointer w-full"
+        />
       </div>
 
-      <div className="flex items-center gap-2 p-3 bg-yellow-50 rounded-lg border border-yellow-100">
+      <div
+        className={`flex items-center gap-3 p-4 rounded-xl border-2 transition-all ${
+          isMilanista
+            ? 'bg-slate-100 border-slate-200 opacity-50'
+            : 'bg-yellow-50/50 border-yellow-100'
+        }`}
+      >
         <input
           id="isVip-add"
           type="checkbox"
-          checked={fields.isVip}
+          checked={isMilanista ? false : fields.isVip}
           onChange={(e) => setters.setIsVip(e.target.checked)}
-          className="w-5 h-5 text-yellow-600 border-gray-300 rounded focus:ring-yellow-500 cursor-pointer"
+          disabled={isMilanista}
+          className="w-6 h-6 text-yellow-500 border-slate-300 rounded-lg focus:ring-yellow-500 cursor-pointer disabled:cursor-not-allowed"
         />
         <label
           htmlFor="isVip-add"
-          className="text-sm font-bold text-yellow-800 cursor-pointer select-none"
+          className={`text-sm font-black uppercase ${isMilanista ? 'text-slate-400' : 'text-yellow-700 cursor-pointer'}`}
         >
-          Oznacz jako Klient VIP
+          Status VIP{' '}
+          {isMilanista && (
+            <span className="text-[9px] text-red-500 ml-2">
+              (ZABLOKOWANE DLA AC MILAN)
+            </span>
+          )}
         </label>
       </div>
 
       <button
         type="submit"
         disabled={status.loading || !!status.phoneError}
-        className="w-full bg-blue-600 text-white font-bold px-4 py-3 rounded-xl hover:bg-blue-700 disabled:opacity-50 transition-all shadow-md active:scale-95"
+        className={`w-full text-white font-black py-4 rounded-2xl transition-all shadow-lg active:scale-95 disabled:opacity-50 uppercase tracking-tighter ${
+          isMilanista
+            ? 'bg-red-600 hover:bg-red-700 shadow-red-200'
+            : 'bg-blue-600 hover:bg-blue-700 shadow-blue-200'
+        }`}
       >
-        {status.loading ? 'Przetwarzanie...' : 'Zatwierdź i dodaj klienta'}
+        {status.loading
+          ? 'Łączenie z Azure...'
+          : isMilanista
+            ? 'Potwierdź wpis na Czarną Listę'
+            : 'Zarejestruj Klienta'}
       </button>
     </form>
   );
