@@ -1,11 +1,10 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import type { Client } from '../types/Client';
-import {
-  uploadClientAvatar,
-  deleteClientDocument,
-  uploadClientDocument,
-} from '../api/clients';
+import { deleteClientDocument, uploadClientDocument } from '../api/clients';
 import toast from 'react-hot-toast';
+
+const BACKEND_URL =
+  'https://cloud-backend-fs-enfyewhphxfjaad8.francecentral-01.azurewebsites.net';
 
 export const useClientActions = (
   client: Client,
@@ -14,7 +13,6 @@ export const useClientActions = (
 ) => {
   const [avatarLoading, setAvatarLoading] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
-  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   const [pdfLoading, setPdfLoading] = useState(false);
   const [previewDocUrl, setPreviewDocUrl] = useState<string | null>(null);
@@ -24,34 +22,42 @@ export const useClientActions = (
     name: string;
   } | null>(null);
 
-  useEffect(() => {
-    return () => {
-      if (previewUrl) URL.revokeObjectURL(previewUrl);
-    };
-  }, [previewUrl]);
-
   const handleAvatarUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
 
-    const localPreview = URL.createObjectURL(file);
-    setPreviewUrl(localPreview);
-    setAvatarLoading(true);
+    const formData = new FormData();
+    formData.append('avatar', file);
 
-    toast.promise(uploadClientAvatar(client.id, file), {
-      loading: 'Wysyłanie zdjęcia do Azure...',
-      success: (updated) => {
-        onClientUpdated(updated);
-        setPreviewUrl(null);
-        setAvatarLoading(false);
-        return 'Avatar zaktualizowany!';
-      },
-      error: (err) => {
-        setPreviewUrl(null);
-        setAvatarLoading(false);
-        return `Błąd: ${err.message}`;
-      },
-    });
+    try {
+      setAvatarLoading(true);
+      const res = await fetch(
+        `${BACKEND_URL}/api/clients/${client.id}/avatar`,
+        {
+          method: 'POST',
+          body: formData,
+          credentials: 'include',
+        }
+      );
+
+      if (res.ok) {
+        const updatedClient = await res.json();
+        onClientUpdated(updatedClient);
+        toast.success('Avatar został zaktualizowany');
+      } else if (res.status === 403) {
+        toast.error(
+          'Brak uprawnień: Tylko administrator może zmieniać zdjęcia.'
+        );
+      } else {
+        const errorData = await res.json().catch(() => ({}));
+        toast.error(errorData.message || 'Nie udało się przesłać zdjęcia');
+      }
+    } catch (error) {
+      console.error('Błąd uploadu:', error);
+      toast.error('Błąd połączenia z serwerem');
+    } finally {
+      setAvatarLoading(false);
+    }
   };
 
   const handleClientSave = (updated: Client) => {
@@ -63,7 +69,6 @@ export const useClientActions = (
   const confirmDelete = () => {
     onDelete(client.id);
     setIsDeleteModalOpen(false);
-    toast.success(`Klient ${client.firstName} usunięty.`);
   };
 
   const handlePdfUpload = async (file: File) => {
@@ -77,7 +82,7 @@ export const useClientActions = (
       },
       error: () => {
         setPdfLoading(false);
-        return 'Błąd uploadu PDF';
+        return 'Błąd uploadu PDF (sprawdź uprawnienia)';
       },
     });
   };
@@ -96,7 +101,7 @@ export const useClientActions = (
         setDocToDelete(null);
         return `Dokument "${docToDelete.name}" usunięty.`;
       },
-      error: 'Nie udało się usunąć dokumentu.',
+      error: 'Nie udało się usunąć dokumentu (brak uprawnień).',
     });
   };
 
@@ -104,7 +109,7 @@ export const useClientActions = (
     state: {
       avatarLoading,
       isEditing,
-      previewUrl,
+      previewUrl: null,
       isDeleteModalOpen,
       pdfLoading,
       previewDocUrl,

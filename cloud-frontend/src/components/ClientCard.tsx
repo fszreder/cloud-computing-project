@@ -203,6 +203,13 @@ export default function ClientCard({
         url={state.previewDocUrl}
         onClose={() => actions.setPreviewDocUrl(null)}
       />
+      <DeleteConfirmationModal
+        isOpen={!!state.docToDelete}
+        onClose={actions.closeDeleteDocModal}
+        onConfirm={actions.confirmDeleteDocument}
+        title="Usuń dokument"
+        message={`Czy na pewno chcesz trwale usunąć plik: ${state.docToDelete?.name}?`}
+      />
     </div>
   );
 }

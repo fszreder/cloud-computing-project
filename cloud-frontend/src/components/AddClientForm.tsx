@@ -23,10 +23,33 @@ export default function AddClientForm({ onClientAdded }: Props) {
     },
   });
 
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+
+    if (file) {
+      const allowedTypes = ['image/jpeg', 'image/png', 'image/webp'];
+      if (!allowedTypes.includes(file.type)) {
+        toast.error('Błąd: Wybierz zdjęcie w formacie JPG, PNG lub WebP!');
+        if (fileInputRef.current) fileInputRef.current.value = '';
+        setAvatar(null);
+        return;
+      }
+
+      const MAX_SIZE = 5 * 1024 * 1024;
+      if (file.size > MAX_SIZE) {
+        toast.error('Błąd: Zdjęcie jest za duże (maksymalnie 5MB)!');
+        if (fileInputRef.current) fileInputRef.current.value = '';
+        setAvatar(null);
+        return;
+      }
+
+      setAvatar(file);
+    }
+  };
+
   const handleCustomSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    // Sprawdzamy czy pola w hooku faktycznie mają wartości
     if (
       !fields.firstName.trim() ||
       !fields.lastName.trim() ||
@@ -109,14 +132,14 @@ export default function AddClientForm({ onClientAdded }: Props) {
 
       <div className="space-y-1 py-2 border-y border-slate-50">
         <label className="block text-xs font-bold text-slate-400 uppercase tracking-wider">
-          Zdjęcie profilowe
+          Zdjęcie profilowe (JPG, PNG, WebP)
         </label>
         <div className="flex items-center gap-3">
           <input
             type="file"
-            accept="image/*"
+            accept="image/jpeg,image/png,image/webp"
             ref={fileInputRef}
-            onChange={(e) => setAvatar(e.target.files?.[0] || null)}
+            onChange={handleFileChange}
             className="text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100 cursor-pointer"
           />
           {avatar && (

@@ -58,11 +58,22 @@ export const useClientForm = ({
         phone: phone || null,
         isVip,
       });
+
       onSuccess(result);
       toast.success('Dane zapisane pomyślnie!');
-    } catch (err) {
-      toast.error('Błąd podczas zapisywania danych');
-      console.error(err);
+      reset();
+    } catch (err: any) {
+      console.error('Błąd zapisu (detale):', err);
+      const isForbidden =
+        err.status === 403 || JSON.stringify(err).includes('403');
+
+      if (isForbidden) {
+        toast.error('Tylko administrator może modyfikować te dane.');
+      } else {
+        const cleanMsg =
+          err.message?.replace(/^Error: /i, '') || 'Wystąpił błąd zapisu.';
+        toast.error(cleanMsg);
+      }
     } finally {
       setLoading(false);
     }

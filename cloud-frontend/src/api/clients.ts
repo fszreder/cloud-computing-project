@@ -1,13 +1,24 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { type Client } from '../types/Client';
 
-const API = '/api';
+const isDevelopment = import.meta.env.MODE === 'development';
+const API = isDevelopment
+  ? '/api'
+  : 'https://cloud-backend-fs-enfyewhphxfjaad8.francecentral-01.azurewebsites.net/api';
 
-export const getClients = async (): Promise<Client[]> => {
-  const res = await fetch(`${API}/clients`);
+const handleResponse = async (res: Response) => {
   if (!res.ok) {
-    throw new Error('Failed to fetch clients');
+    const errorBody = await res.json().catch(() => ({}));
+    const error: any = new Error(errorBody.message || 'Błąd serwera');
+    error.status = res.status;
+    throw error;
   }
   return res.json();
+};
+
+export const getClients = async (): Promise<Client[]> => {
+  const res = await fetch(`${API}/clients`, { credentials: 'include' });
+  return handleResponse(res);
 };
 
 export const addClient = async (
@@ -15,34 +26,29 @@ export const addClient = async (
   avatarFile?: File
 ): Promise<Client> => {
   const formData = new FormData();
-
   formData.append('firstName', data.firstName);
   formData.append('lastName', data.lastName);
   formData.append('email', data.email);
   if (data.phone) formData.append('phone', data.phone);
-
   formData.append('isVip', String(data.isVip ?? false));
-  if (avatarFile) {
-    formData.append('avatar', avatarFile);
-  }
+
+  if (avatarFile) formData.append('avatar', avatarFile);
 
   const res = await fetch(`${API}/clients`, {
     method: 'POST',
     body: formData,
+    credentials: 'include',
   });
 
-  if (!res.ok) {
-    const errorText = await res.text();
-    throw new Error(errorText || 'Failed to add client');
-  }
-
-  return res.json();
+  return handleResponse(res);
 };
 
 export async function deleteClientApi(id: string) {
-  await fetch(`${API}/clients/${id}`, {
+  const res = await fetch(`${API}/clients/${id}`, {
     method: 'DELETE',
+    credentials: 'include',
   });
+  return handleResponse(res);
 }
 
 export const uploadClientDocument = async (
@@ -55,10 +61,10 @@ export const uploadClientDocument = async (
   const res = await fetch(`${API}/clients/${clientId}/documents`, {
     method: 'POST',
     body: formData,
+    credentials: 'include',
   });
 
-  if (!res.ok) throw new Error(await res.text());
-  return res.json();
+  return handleResponse(res);
 };
 
 export const deleteClientDocument = async (
@@ -67,10 +73,10 @@ export const deleteClientDocument = async (
 ): Promise<Client> => {
   const res = await fetch(`${API}/clients/${clientId}/documents/${docId}`, {
     method: 'DELETE',
+    credentials: 'include',
   });
 
-  if (!res.ok) throw new Error(await res.text());
-  return res.json();
+  return handleResponse(res);
 };
 
 export const updateClient = async (
@@ -79,14 +85,12 @@ export const updateClient = async (
 ): Promise<Client> => {
   const res = await fetch(`${API}/clients/${id}`, {
     method: 'PUT',
-    headers: {
-      'Content-Type': 'application/json',
-    },
+    headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(data),
+    credentials: 'include',
   });
 
-  if (!res.ok) throw new Error(await res.text());
-  return res.json();
+  return handleResponse(res);
 };
 
 export const uploadClientAvatar = async (
@@ -99,11 +103,8 @@ export const uploadClientAvatar = async (
   const res = await fetch(`${API}/clients/${clientId}/avatar`, {
     method: 'POST',
     body: formData,
+    credentials: 'include',
   });
 
-  if (!res.ok) {
-    throw new Error(await res.text());
-  }
-
-  return res.json();
+  return handleResponse(res);
 };

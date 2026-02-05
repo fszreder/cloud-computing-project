@@ -54,6 +54,28 @@ router.post("/", upload.single("avatar"), async (req, res) => {
     const { firstName, lastName, email, phone, isVip } = req.body;
     const file = req.file;
 
+    if (file) {
+      const allowedTypes = [
+        "image/jpeg",
+        "image/png",
+        "image/webp",
+        "image/gif",
+      ];
+      if (!allowedTypes.includes(file.mimetype)) {
+        return res
+          .status(400)
+          .json({
+            error: "Nieprawidłowy format zdjęcia. Użyj JPG, PNG lub WebP.",
+          });
+      }
+
+      if (file.size > 5 * 1024 * 1024) {
+        return res
+          .status(400)
+          .json({ error: "Zdjęcie jest za duże. Maksymalny rozmiar to 5MB." });
+      }
+    }
+
     if (!firstName || !lastName || !email) {
       return res.status(400).json({ error: "Required fields missing" });
     }
@@ -168,7 +190,17 @@ router.post("/:id/documents", upload.single("file"), async (req, res) => {
   try {
     const { id } = req.params;
     const file = req.file;
+
     if (!file) return res.status(400).json({ error: "No file uploaded" });
+
+    if (file.mimetype !== "application/pdf") {
+      console.warn(
+        `[Security] Próba wgrania niewłaściwego pliku: ${file.mimetype}`,
+      );
+      return res.status(400).json({
+        error: "Proszę wgrać plik PDF.",
+      });
+    }
 
     const blobServiceClient = BlobServiceClient.fromConnectionString(
       process.env.AZURE_STORAGE_CONNECTION_STRING,
