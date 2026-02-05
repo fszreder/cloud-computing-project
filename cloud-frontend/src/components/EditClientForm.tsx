@@ -2,7 +2,6 @@ import type { Client } from '../types/Client';
 import { updateClient } from '../api/clients';
 import { useClientForm } from '../hooks/useClientForm';
 
-// Stała lista do weryfikacji przy edycji
 const MILAN_BLACKLIST = [
   'Zlatan Ibrahimovic',
   'Theo Hernandez',

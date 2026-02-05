@@ -111,7 +111,6 @@ router.post("/", upload.single("avatar"), async (req, res) => {
       const extension = file.originalname.split(".").pop();
       blobName = `${clientId}/${avatarId}.${extension}`;
       const blockBlobClient = containerClient.getBlockBlobClient(blobName);
-
       await blockBlobClient.uploadData(file.buffer);
       await blockBlobClient.setHTTPHeaders({
         blobContentType: file.mimetype,
@@ -229,7 +228,6 @@ router.post("/:id/documents", upload.single("file"), async (req, res) => {
     const docId = crypto.randomUUID();
     const blobName = `${id}-${Date.now()}-${file.originalname}`;
     const blockBlobClient = containerClient.getBlockBlobClient(blobName);
-
     await blockBlobClient.uploadData(file.buffer);
     await blockBlobClient.setHTTPHeaders({
       blobContentType:

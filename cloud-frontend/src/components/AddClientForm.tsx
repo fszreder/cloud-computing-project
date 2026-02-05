@@ -119,15 +119,8 @@ export default function AddClientForm({ onClientAdded }: Props) {
         <h2
           className={`text-2xl font-black tracking-tighter uppercase ${isMilanista ? 'text-red-700' : 'text-slate-800'}`}
         >
-          {isMilanista
-            ? '🚨 Wykryto Milanistę 🚨'
-            : 'Rejestracja Nowego Klienta'}
+          {isMilanista ? '🚨 🚨 🚨' : 'Rejestracja Nowego Klienta'}
         </h2>
-        {isMilanista && (
-          <span className="animate-bounce bg-red-600 text-white text-[10px] px-2 py-1 rounded-md font-bold">
-            INTER FANS ONLY
-          </span>
-        )}
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
