@@ -51,7 +51,7 @@ export default function App() {
               C
             </div>
             <span className="text-xl font-extrabold tracking-tight text-slate-800">
-              Cloud<span className="text-blue-600">CRM</span>
+              CloudClient<span className="text-blue-600">PRO</span>
             </span>
           </div>
 

@@ -6,7 +6,7 @@ const crypto = require("crypto");
 const multer = require("multer");
 const { BlobServiceClient } = require("@azure/storage-blob");
 const { QueueClient } = require("@azure/storage-queue");
-const pdfParse = require("pdf-parse");
+const pdfLib = require("pdf-parse");
 const axios = require("axios");
 
 const upload = multer({ storage: multer.memoryStorage() });
@@ -353,8 +353,12 @@ router.post("/:id/avatar", upload.single("avatar"), async (req, res) => {
   }
 });
 
-//8. POST podsumowanie dokumentu przez AI
+// 8. POST podsumowanie dokumentu przez AI
 router.post("/:id/documents/:docId/summarize", async (req, res) => {
+  console.log(
+    `[AI-DEBUG] Start: Client=${req.params.id}, Doc=${req.params.docId}`,
+  );
+
   try {
     const { id, docId } = req.params;
 
@@ -367,24 +371,33 @@ router.post("/:id/documents/:docId/summarize", async (req, res) => {
     const response = await axios.get(document.url, {
       responseType: "arraybuffer",
     });
-    const buffer = Buffer.from(response.data);
+    const pdfBuffer = Buffer.from(response.data);
 
-    const pdfData = await pdf(buffer);
-    const extractedText = pdfData.text
-      .replace(/\s+/g, " ")
-      .trim()
-      .substring(0, 5000);
-
-    if (!extractedText || extractedText.length < 10) {
+    let extractedText = "";
+    try {
+      // 2. UŻYWAMY NOWEJ ZMIENNEJ "pdfLib"
+      const data = await pdfLib(pdfBuffer);
+      extractedText = data.text.replace(/\s+/g, " ").trim().substring(0, 4000);
+      console.log(
+        `[AI-DEBUG] Wyciągnięto ${extractedText.length} znaków tekstu.`,
+      );
+    } catch (parseErr) {
+      console.error("[AI-ERROR] Błąd pdf-parse:", parseErr.message);
       return res
-        .status(400)
-        .json({ error: "PDF nie zawiera tekstu (może to skan?)" });
+        .status(500)
+        .json({ error: "Serwer nie mógł odczytać treści PDF." });
+    }
+
+    if (!extractedText || extractedText.length < 5) {
+      return res.status(400).json({
+        error: "PDF nie posiada warstwy tekstowej (to może być skan).",
+      });
     }
 
     const aiResponse = await axios.post(
       `${process.env.AZURE_AI_ENDPOINT}/language/:analyze-text?api-version=2023-04-01`,
       {
-        kind: "AbstractiveSummarization",
+        kind: "KeyPhraseExtraction",
         analysisInput: {
           documents: [{ id: "1", language: "pl", text: extractedText }],
         },
@@ -397,15 +410,26 @@ router.post("/:id/documents/:docId/summarize", async (req, res) => {
       },
     );
 
-    const summary = `AI przeanalizowało dokument "${document.name}". Główne zagadnienia: ${extractedText.substring(0, 250)}...`;
+    const phrases = aiResponse.data.results.documents[0].keyPhrases;
+    const summary =
+      `Podsumowanie AI dla dokumentu: ${document.name}\n\n` +
+      `Kluczowe zagadnienia: ${phrases.slice(0, 7).join(", ")}.\n\n` +
+      `Początek treści: ${extractedText.substring(0, 200)}...`;
 
     document.summary = summary;
     await clientsContainer.item(id, id).replace(client);
 
     res.json({ summary });
   } catch (error) {
-    console.error("Błąd AI:", error.response?.data || error.message);
-    res.status(500).json({ error: "AI nie mogło przetworzyć tekstu." });
+    console.error(
+      "[AI-CRITICAL-ERROR]:",
+      error.response?.data || error.message,
+    );
+    res.status(500).json({
+      error:
+        "Błąd usługi AI: " +
+        (error.response?.data?.error?.message || error.message),
+    });
   }
 });
 
