@@ -16,6 +16,7 @@ const MILAN_BLACKLIST = [
   'Ruben Loftus-Cheek',
   'Rafael Leão',
   'Olivier Giroud',
+  'Damian Guz',
 ];
 
 interface Props {

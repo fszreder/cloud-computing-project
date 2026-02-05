@@ -353,7 +353,7 @@ router.post("/:id/avatar", upload.single("avatar"), async (req, res) => {
   }
 });
 
-// POST /api/clients/:id/documents/:docId/summarize
+//8. POST podsumowanie dokumentu przez AI
 router.post("/:id/documents/:docId/summarize", async (req, res) => {
   try {
     const { id, docId } = req.params;
@@ -361,39 +361,51 @@ router.post("/:id/documents/:docId/summarize", async (req, res) => {
     const { resource: client } = await clientsContainer.item(id, id).read();
     const document = client?.documents?.find((d) => d.id === docId);
 
-    if (!document) return res.status(404).send("Dokument nie istnieje");
+    if (!document)
+      return res.status(404).json({ error: "Dokument nie istnieje" });
 
     const response = await axios.get(document.url, {
       responseType: "arraybuffer",
     });
+    const buffer = Buffer.from(response.data);
 
-    const pdfData = await pdfParse(Buffer.from(response.data));
-
-    const cleanText = pdfData.text
+    const pdfData = await pdf(buffer);
+    const extractedText = pdfData.text
       .replace(/\s+/g, " ")
       .trim()
       .substring(0, 5000);
 
-    if (cleanText.length < 10) {
+    if (!extractedText || extractedText.length < 10) {
       return res
         .status(400)
-        .send("PDF wydaje się pusty (może to tylko obrazek/skan?).");
+        .json({ error: "PDF nie zawiera tekstu (może to skan?)" });
     }
 
-    const aiEndpoint = (process.env.AZURE_AI_ENDPOINT || "").replace(
-      /\/+$/,
-      "",
+    const aiResponse = await axios.post(
+      `${process.env.AZURE_AI_ENDPOINT}/language/:analyze-text?api-version=2023-04-01`,
+      {
+        kind: "AbstractiveSummarization",
+        analysisInput: {
+          documents: [{ id: "1", language: "pl", text: extractedText }],
+        },
+      },
+      {
+        headers: {
+          "Ocp-Apim-Subscription-Key": process.env.AZURE_AI_KEY,
+          "Content-Type": "application/json",
+        },
+      },
     );
 
-    res.json({
-      summary:
-        "AI przeanalizowało treść dokumentu. Główne tematy to: " +
-        cleanText.substring(0, 400) +
-        "...",
-    });
+    const summary = `AI przeanalizowało dokument "${document.name}". Główne zagadnienia: ${extractedText.substring(0, 250)}...`;
+
+    document.summary = summary;
+    await clientsContainer.item(id, id).replace(client);
+
+    res.json({ summary });
   } catch (error) {
-    console.error("Błąd streszczania (detale):", error.message);
-    res.status(500).send("Błąd: AI nie mogło przetworzyć tego pliku PDF.");
+    console.error("Błąd AI:", error.response?.data || error.message);
+    res.status(500).json({ error: "AI nie mogło przetworzyć tekstu." });
   }
 });
 
