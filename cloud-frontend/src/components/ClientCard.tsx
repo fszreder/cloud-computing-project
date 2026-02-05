@@ -195,7 +195,7 @@ export default function ClientCard({
           <h4
             className={`text-xs font-bold uppercase tracking-wider ${isBlacklisted ? 'text-red-400' : 'text-gray-400'}`}
           >
-            Dokumenty klienta {isBlacklisted && '(POD NADZOREM)'}
+            Dokumenty klienta {isBlacklisted}
           </h4>
           <ClientDocuments
             documents={client.documents}

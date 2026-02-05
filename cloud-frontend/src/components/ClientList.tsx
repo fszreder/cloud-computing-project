@@ -73,7 +73,7 @@ export default function ClientList() {
                 </div>
                 <div>
                   <h3 className="font-black text-red-700 tracking-tight uppercase text-sm">
-                    Lista Wstydu
+                    Czarna lista
                   </h3>
                   <p className="text-[11px] text-red-500 font-medium">
                     {blacklistedClients.length} klientów na czarnej liście
