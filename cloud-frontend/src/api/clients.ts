@@ -108,3 +108,24 @@ export const uploadClientAvatar = async (
 
   return handleResponse(res);
 };
+
+export const summarizeDocument = async (
+  clientId: string,
+  docId: string
+): Promise<{ summary: string }> => {
+  const res = await fetch(
+    `${API}/clients/${clientId}/documents/${docId}/summarize`,
+    {
+      method: 'POST',
+      credentials: 'include',
+    }
+  );
+
+  if (!res.ok) {
+    const errorData = await res.json().catch(() => ({}));
+    const error: any = new Error(errorData.message || 'Błąd streszczania');
+    error.status = res.status;
+    throw error;
+  }
+  return res.json();
+};

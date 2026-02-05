@@ -3,13 +3,17 @@ import type { Client } from '../types/Client';
 interface Props {
   documents: Client['documents'];
   onDelete: (docId: string) => void;
-  onPreview: (url: string) => void; // Dodajemy to pole do interface
+  onPreview: (url: string) => void;
+  onSummarize: (id: string) => void;
+  summarizingDocId: string | null;
 }
 
 export default function ClientDocuments({
   documents,
   onDelete,
   onPreview,
+  onSummarize,
+  summarizingDocId,
 }: Props) {
   if (!documents || documents.length === 0) {
     return <p className="text-sm text-gray-500 italic">Brak dokumentów</p>;
@@ -32,6 +36,15 @@ export default function ClientDocuments({
           </div>
 
           <div className="flex items-center gap-2">
+            <button
+              onClick={() => onSummarize(doc.id)}
+              className="p-1.5 text-purple-600 hover:bg-purple-50 rounded-md transition-colors"
+              title="Streść przez AI"
+              disabled={summarizingDocId === doc.id}
+            >
+              {summarizingDocId === doc.id ? '⏳' : '✨'}
+            </button>
+
             <button
               onClick={() => onPreview(doc.url)}
               className="p-1.5 text-blue-600 hover:bg-blue-50 rounded transition-colors"

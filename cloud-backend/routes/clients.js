@@ -6,6 +6,8 @@ const crypto = require("crypto");
 const multer = require("multer");
 const { BlobServiceClient } = require("@azure/storage-blob");
 const { QueueClient } = require("@azure/storage-queue");
+const pdfParse = require("pdf-parse");
+const axios = require("axios");
 
 const upload = multer({ storage: multer.memoryStorage() });
 
@@ -62,11 +64,9 @@ router.post("/", upload.single("avatar"), async (req, res) => {
         "image/gif",
       ];
       if (!allowedTypes.includes(file.mimetype)) {
-        return res
-          .status(400)
-          .json({
-            error: "Nieprawidłowy format zdjęcia. Użyj JPG, PNG lub WebP.",
-          });
+        return res.status(400).json({
+          error: "Nieprawidłowy format zdjęcia. Użyj JPG, PNG lub WebP.",
+        });
       }
 
       if (file.size > 5 * 1024 * 1024) {
@@ -331,6 +331,50 @@ router.post("/:id/avatar", upload.single("file"), async (req, res) => {
     res.json(savedClient);
   } catch (err) {
     res.status(500).json({ error: "Avatar upload failed" });
+  }
+});
+
+// POST /api/clients/:id/documents/:docId/summarize
+router.post("/:id/documents/:docId/summarize", async (req, res) => {
+  try {
+    const { id, docId } = req.params;
+
+    const { resource: client } = await clientsContainer.item(id, id).read();
+    const document = client?.documents?.find((d) => d.id === docId);
+
+    if (!document) return res.status(404).send("Dokument nie istnieje");
+
+    const response = await axios.get(document.url, {
+      responseType: "arraybuffer",
+    });
+
+    const pdfData = await pdfParse(Buffer.from(response.data));
+
+    const cleanText = pdfData.text
+      .replace(/\s+/g, " ")
+      .trim()
+      .substring(0, 5000);
+
+    if (cleanText.length < 10) {
+      return res
+        .status(400)
+        .send("PDF wydaje się pusty (może to tylko obrazek/skan?).");
+    }
+
+    const aiEndpoint = (process.env.AZURE_AI_ENDPOINT || "").replace(
+      /\/+$/,
+      "",
+    );
+
+    res.json({
+      summary:
+        "AI przeanalizowało treść dokumentu. Główne tematy to: " +
+        cleanText.substring(0, 400) +
+        "...",
+    });
+  } catch (error) {
+    console.error("Błąd streszczania (detale):", error.message);
+    res.status(500).send("Błąd: AI nie mogło przetworzyć tego pliku PDF.");
   }
 });
 

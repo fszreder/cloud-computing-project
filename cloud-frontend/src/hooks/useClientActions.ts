@@ -1,6 +1,12 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
+
 import { useState } from 'react';
 import type { Client } from '../types/Client';
-import { deleteClientDocument, uploadClientDocument } from '../api/clients';
+import {
+  deleteClientDocument,
+  uploadClientDocument,
+  summarizeDocument,
+} from '../api/clients';
 import toast from 'react-hot-toast';
 
 const BACKEND_URL =
@@ -16,11 +22,34 @@ export const useClientActions = (
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   const [pdfLoading, setPdfLoading] = useState(false);
   const [previewDocUrl, setPreviewDocUrl] = useState<string | null>(null);
+  const [summarizingDocId, setSummarizingDocId] = useState<string | null>(null);
 
   const [docToDelete, setDocToDelete] = useState<{
     id: string;
     name: string;
   } | null>(null);
+
+  const handleSummarize = async (docId: string) => {
+    try {
+      setSummarizingDocId(docId);
+      toast.loading('AI analizuje dokument...', { id: 'ai-status' });
+
+      const { summary } = await summarizeDocument(client.id, docId);
+
+      toast.success('Dokument streszczony!', { id: 'ai-status' });
+
+      alert(`Streszczenie AI:\n\n${summary}`);
+    } catch (err: any) {
+      console.error('Błąd AI:', err);
+      if (err.status === 403) {
+        toast.error('Brak uprawnień do korzystania z AI', { id: 'ai-status' });
+      } else {
+        toast.error('AI nie mogło przeczytać tego pliku', { id: 'ai-status' });
+      }
+    } finally {
+      setSummarizingDocId(null);
+    }
+  };
 
   const handleAvatarUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -114,6 +143,7 @@ export const useClientActions = (
       pdfLoading,
       previewDocUrl,
       docToDelete,
+      summarizingDocId,
     },
     actions: {
       setIsEditing,
@@ -125,6 +155,7 @@ export const useClientActions = (
       setPreviewDocUrl,
       openDeleteDocModal,
       confirmDeleteDocument,
+      handleSummarize,
       closeDeleteDocModal: () => setDocToDelete(null),
     },
   };

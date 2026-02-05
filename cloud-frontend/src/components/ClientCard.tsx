@@ -159,6 +159,8 @@ export default function ClientCard({
             documents={client.documents}
             onDelete={(docId) => actions.openDeleteDocModal(docId, 'dokument')}
             onPreview={actions.setPreviewDocUrl}
+            onSummarize={actions.handleSummarize}
+            summarizingDocId={state.summarizingDocId}
           />
           <UploadPdf
             loading={state.pdfLoading}

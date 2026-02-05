@@ -11,7 +11,6 @@ app.storageQueue("avatarThumbnail", {
   handler: async (queueItem, context) => {
     context.log("--- START PRZETWARZANIA (Z AI VISION v4.0) ---");
 
-    // Inicjalizacja klienta wewnątrz handlera (bezpieczniejsze w chmurze)
     const aiClient = createClient(
       (process.env.AZURE_AI_ENDPOINT || "").replace(/\/+$/, ""),
       new AzureKeyCredential(process.env.AZURE_AI_KEY || ""),

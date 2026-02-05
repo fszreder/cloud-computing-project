@@ -10,23 +10,47 @@ app.use(cors());
 app.use(express.json());
 
 app.use((req, res, next) => {
-  const githubUser = req.headers["x-ms-client-principal-name"];
+  const displayName = req.headers["x-ms-client-principal-name"];
+  const encodedPrincipal = req.headers["x-ms-client-principal"];
+
+  let githubId = null;
+
+  if (encodedPrincipal) {
+    try {
+      const decoded = JSON.parse(
+        Buffer.from(encodedPrincipal, "base64").toString("utf-8"),
+      );
+      const idClaim = decoded.claims.find(
+        (c) =>
+          c.typ ===
+          "http://schemas.xmlsoap.org/ws/2005/05/identity/claims/nameidentifier",
+      );
+      if (idClaim) githubId = idClaim.val;
+    } catch (e) {
+      console.error("Błąd dekodowania principal:", e);
+    }
+  }
+
+  console.log(`[AUTH] Próba: Name="${displayName}" | ID="${githubId}"`);
 
   const ADMINS = [
-    "fszreder",
     "Filip Szreder",
-    "Darmsztradt",
-    "NickProwadzacego",
-  ];
+    "Tomasz Wanke",
+    "171807352",
+    "fszreder",
+    "Ola",
+    "OlaBluszcz",
+  ].map((a) => a.toLowerCase());
 
   if (["POST", "DELETE", "PUT"].includes(req.method)) {
-    const isAdmin = githubUser && ADMINS.includes(githubUser);
+    const isAdmin =
+      (displayName && ADMINS.includes(displayName.toLowerCase())) ||
+      (githubId && ADMINS.includes(githubId.toLowerCase()));
 
     if (!isAdmin) {
-      console.warn(`[Security] Odmowa dla: ${githubUser || "Anonim"}`);
       return res.status(403).json({
         error: "Forbidden",
-        message: `${githubUser || "Anonim"} nie ma uprawnień administratora.`,
+        message: `Brak uprawnień. Zalogowany jako: ${displayName || githubId || "Anonim"}`,
       });
     }
   }

@@ -18,10 +18,12 @@
     "@azure/cosmos": "^4.9.0",
     "@azure/storage-blob": "^12.29.1",
     "@azure/storage-queue": "^12.29.0",
+    "axios": "^1.13.4",
     "cors": "^2.8.5",
     "dotenv": "^17.2.3",
     "express": "^4.19.2",
     "multer": "^2.0.2",
+    "pdf-parse": "^2.4.5",
     "uuid": "^13.0.0"
   },
   "devDependencies": {
