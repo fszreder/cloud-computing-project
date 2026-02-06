@@ -373,7 +373,6 @@ router.post("/:id/documents/:docId/summarize", async (req, res) => {
 
     let extractedText = "";
     try {
-      // 2. UŻYWAMY NOWEJ ZMIENNEJ "pdfLib"
       const data = await pdfLib(pdfBuffer);
       extractedText = data.text.replace(/\s+/g, " ").trim().substring(0, 4000);
       console.log(
